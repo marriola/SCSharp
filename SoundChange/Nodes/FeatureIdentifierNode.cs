@@ -1,18 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace SoundChange.Nodes
+﻿namespace SoundChange.Nodes
 {
-    class FeatureSetIdentifierNode : Node
+    class FeatureIdentifierNode : Node
     {
         public bool IsPresent { get; private set; }
 
         public string Name { get; private set; }
 
-        public FeatureSetIdentifierNode(bool isPresent, string name)
+        public FeatureIdentifierNode(bool isPresent, string name)
         {
             IsPresent = isPresent;
             Name = name;

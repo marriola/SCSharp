@@ -49,7 +49,7 @@
     <Compile Include="Nodes\BoundaryNode.cs" />
     <Compile Include="Nodes\CategoryNode.cs" />
     <Compile Include="Nodes\FeatureSetNode.cs" />
-    <Compile Include="Nodes\FeatureSetIdentifierNode.cs" />
+    <Compile Include="Nodes\FeatureIdentifierNode.cs" />
     <Compile Include="Nodes\IdentifierNode.cs" />
     <Compile Include="Nodes\Node.cs" />
     <Compile Include="Nodes\PlaceholderNode.cs" />

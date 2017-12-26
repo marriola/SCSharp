@@ -1,12 +1,7 @@
 ﻿using SoundChange.Nodes;
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SoundChange
 {
@@ -292,7 +287,7 @@ namespace SoundChange
             }
         }
 
-        private FeatureSetIdentifierNode FeatureSetIdentifier()
+        private FeatureIdentifierNode FeatureSetIdentifier()
         {
             var presenceToken = _lexer.Next();
             if (presenceToken.Type != TokenType.PLUS && presenceToken.Type != TokenType.MINUS)
@@ -304,7 +299,7 @@ namespace SoundChange
             var ident = _lexer.Next();
             Match(TokenType.RBRACK, "FeatureSetIdentifier");
 
-            return new FeatureSetIdentifierNode(isPresent, ident.Value);
+            return new FeatureIdentifierNode(isPresent, ident.Value);
         }
 
         private Token Match(TokenType type, string rule)

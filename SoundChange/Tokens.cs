@@ -6,6 +6,8 @@
         public static readonly Token RBRACK = Token.From(TokenType.RBRACK, "]");
         public static readonly Token LBRACE = Token.From(TokenType.LBRACE, "{");
         public static readonly Token RBRACE = Token.From(TokenType.RBRACE, "}");
+        public static readonly Token LPAREN = Token.From(TokenType.LPAREN, "(");
+        public static readonly Token RPAREN = Token.From(TokenType.RPAREN, ")");
         public static readonly Token SLASH = Token.From(TokenType.SLASH, "/");
         public static readonly Token PLACEHOLDER = Token.From(TokenType.PLACEHOLDER, "_");
         public static readonly Token BOUNDARY = Token.From(TokenType.BOUNDARY, "#");

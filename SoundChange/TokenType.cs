@@ -8,6 +8,8 @@
         RBRACK,
         LBRACE,
         RBRACE,
+        LPAREN,
+        RPAREN,
         SLASH,
         PLACEHOLDER,
         BOUNDARY,

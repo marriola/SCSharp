@@ -25,6 +25,8 @@ namespace SoundChange
                 Tokens.RBRACE,
                 Tokens.LBRACK,
                 Tokens.RBRACK,
+                Tokens.LPAREN,
+                Tokens.RPAREN,
                 Tokens.ARROW,
                 Tokens.BOUNDARY,
                 Tokens.PLACEHOLDER,
@@ -254,6 +256,9 @@ namespace SoundChange
 
         private RuleNode RuleEnvironment(List<Node> target, List<Node> result, List<Node> environment)
         {
+            OptionalNode optional = null;
+            List<Node> parent = environment;
+
             while (true)
             {
                 var next = _lexer.Next();
@@ -261,33 +266,61 @@ namespace SoundChange
                 switch (next.Type)
                 {
                     case TokenType.LBRACK:
-                        environment.Add(FeatureSetIdentifier());
+                        parent.Add(FeatureSetIdentifier());
                         break;
 
                     case TokenType.PLACEHOLDER:
-                        environment.Add(new PlaceholderNode());
+                        if (optional != null)
+                        {
+                            throw new SyntaxException("RuleEnvironment", "Placeholder cannot be optional.", next.Position);
+                        }
+                        parent.Add(new PlaceholderNode());
                         break;
 
                     case TokenType.IDENT:
-                        environment.Add(new IdentifierNode(next.Value));
+                        parent.Add(new IdentifierNode(next.Value));
                         break;
 
                     case TokenType.UTTERANCE:
-                        environment.Add(new UtteranceNode(next.Value));
+                        parent.Add(new UtteranceNode(next.Value));
                         break;
 
                     case TokenType.BOUNDARY:
-                        environment.Add(new BoundaryNode());
+                        if (optional != null)
+                        {
+                            throw new SyntaxException("RuleEnvironment", "Boundary cannot be optional.", next.Position);
+                        }
+                        parent.Add(new BoundaryNode());
+                        break;
+
+                    case TokenType.LPAREN:
+                        if (optional != null)
+                        {
+                            throw new ParseException("RuleEnvironment", "utterance, identifier, placeholder, category identifier, feature identifier, or ')'", next);
+                        }
+                        optional = new OptionalNode();
+                        parent = optional.Children;
+                        environment.Add(optional);
+                        break;
+
+                    case TokenType.RPAREN:
+                        if (optional == null)
+                        {
+                            throw new ParseException("RuleEnvironment", "utterance, identifier, placeholder, category identifier, feature identifier, or '('", next);
+                        }
+                        optional = null;
+                        parent = environment;
                         break;
 
                     default:
+                        // Done; back up.
                         _lexer.Back();
                         return new RuleNode(target, result, environment);
                 }
             }
         }
 
-        private FeatureIdentifierNode FeatureSetIdentifier()
+        private FeatureIdentifierNode FeatureSetIdentifier(bool optional = false)
         {
             var presenceToken = _lexer.Next();
             if (presenceToken.Type != TokenType.PLUS && presenceToken.Type != TokenType.MINUS)

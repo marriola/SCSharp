@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SoundChange.StateMachines;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -16,7 +17,7 @@ namespace SoundChange
 
         private readonly StreamReader _stream;
 
-        private StateMachine _stateMachine;
+        private TokenMachine _stateMachine;
 
         private List<Token> _tokens;
 
@@ -50,7 +51,7 @@ namespace SoundChange
         public Lexer(StreamReader stream)
         {
             _stream = stream;
-            _stateMachine = new StateMachine();
+            _stateMachine = new TokenMachine();
             _tokens = new List<Token>();
         }
 
@@ -118,10 +119,10 @@ namespace SoundChange
 
             while (true)
             {
-                if (_stateMachine.Current == StateMachine.ERROR)
+                if (_stateMachine.Current == TokenMachine.ERROR)
                 {
                     // Detect end of token
-                    if (char.IsWhiteSpace(peek()) || _stateMachine.PeekStart(peekNonWhitespace()) != StateMachine.ERROR)
+                    if (char.IsWhiteSpace(peek()) || _stateMachine.PeekStart(peekNonWhitespace()) != TokenMachine.ERROR)
                     {
                         break;
                     }
@@ -144,7 +145,7 @@ namespace SoundChange
                 }
             }
 
-            if (_stateMachine.Current == StateMachine.ERROR)
+            if (_stateMachine.Current == TokenMachine.ERROR)
             {
                 if (RE_IDENTIFIER.IsMatch(value))
                 {
@@ -155,7 +156,7 @@ namespace SoundChange
                     return Token.From(TokenType.UTTERANCE, value, position);
                 }
 
-                return StateMachine.ERROR.Token.At(position);
+                return TokenMachine.ERROR.Token.At(position);
             }
 
             _stateMachine.Step(Token.END);

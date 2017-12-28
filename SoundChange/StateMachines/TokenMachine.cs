@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
 
-namespace SoundChange
+namespace SoundChange.StateMachines
 {
-    class StateMachine
+    class TokenMachine
     {
         public static State START = new State();
 

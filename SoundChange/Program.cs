@@ -1,7 +1,9 @@
 ﻿using SoundChange.Nodes;
+using SoundChange.StateMachines;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace SoundChange
@@ -42,6 +44,23 @@ namespace SoundChange
             {
                 Console.WriteLine($"Syntax error {ex.Message}");
             }
+
+            var features = nodes
+                .Select(x => x as FeatureSetNode)
+                .Where(x => x != null)
+                .ToList();
+
+            var categories = nodes
+                .Select(x => x as CategoryNode)
+                .Where(x => x != null)
+                .ToList();
+
+            var rules = nodes
+                .Where(x => x is RuleNode)
+                .Select(x => new RuleMachine(x as RuleNode, features, categories))
+                .ToList();
+
+            var s = rules[0].ApplyTo("apaka");
         }
     }
 }

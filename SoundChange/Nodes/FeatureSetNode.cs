@@ -13,6 +13,16 @@ namespace SoundChange.Nodes
 
         public Dictionary<string, string> Removals { get; private set; } = new Dictionary<string, string>();
 
+        /// <summary>
+        /// Gets or sets the builder tree for segments that have this feature.
+        /// </summary>
+        public BuilderNode PlusTree { get; private set; }
+
+        /// <summary>
+        /// Gets or sets the builder tree for segments that do not have this feature.
+        /// </summary>
+        public BuilderNode MinusTree { get; private set; }
+
         public FeatureSetNode(string name, HashSet<string> members = null, List<(string from, string to)> transitions = null)
         {
             Name = name;
@@ -22,7 +32,11 @@ namespace SoundChange.Nodes
             {
                 Additions[transition.from] = transition.to;
                 Removals[transition.to] = transition.from;
+                Members.Add(transition.to);
             }
+
+            PlusTree = BuilderNode.TreeFrom(Members);
+            MinusTree = BuilderNode.TreeFrom(Additions.Keys);
         }
 
         public override string ToString()

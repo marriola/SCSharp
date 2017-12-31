@@ -4,13 +4,15 @@ namespace SoundChange.StateMachines
 {
     class TokenMachine
     {
-        public static State START = new State();
+        public static State START = new State("S");
 
         public static State ERROR = new State(Token.From(TokenType.ERROR, string.Empty));
 
         private State _current;
 
         private Dictionary<(State, char), State> _transitions = new Dictionary<(State, char), State>();
+
+        private StateFactory _stateFactory = new StateFactory();
 
         public bool IsFinalState
         {
@@ -38,7 +40,7 @@ namespace SoundChange.StateMachines
 
                 if (!_transitions.ContainsKey((currentState, c)))
                 {
-                    _transitions[(currentState, c)] = new State();
+                    _transitions[(currentState, c)] = _stateFactory.Next();
                 }
 
                 currentState = _transitions[(currentState, c)];

@@ -9,11 +9,15 @@ namespace SoundChange.Nodes
 
         public HashSet<string> Members { get; private set; }
 
+        public BuilderNode BuilderTree { get; private set; }
+
         public CategoryNode(string name, HashSet<string> members)
         {
             Name = name;
             Members = members;
+            BuilderTree = BuilderNode.TreeFrom(members);
         }
+
 
         public override string ToString()
         {

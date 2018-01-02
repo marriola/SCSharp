@@ -32,19 +32,34 @@ namespace SoundChange
 
     class MergedState : State
     {
-        public List<State> States { get; private set; }
+        public HashSet<State> States { get; private set; }
 
         public override string Name
         {
             get
             {
-                return string.Join(string.Empty, States.Select(x => x.Name));
+                return string.Join(",", States.Select(x => x.Name));
             }
         }
 
-        public MergedState(State state1, State state2)
+        public MergedState(IEnumerable<State> states)
         {
-            States = new List<State> { state1, state2 };
+            States = new HashSet<State>();
+
+            foreach (var state in states)
+            {
+                if (state is MergedState ms)
+                {
+                    foreach (var substate in ms.States)
+                    {
+                        States.Add(substate);
+                    }
+                }
+                else
+                {
+                    States.Add(state);
+                }
+            }
         }
 
         public List<State> Closure(char c, Dictionary<(State, char), State> transitions)
@@ -62,10 +77,24 @@ namespace SoundChange
 
             return closure;
         }
+    }
 
-        public static MergedState Find(State state1, State state2, Dictionary<State, MergedState> mergers)
+    class MergedStateFactory
+    {
+        private List<MergedState> _merged = new List<MergedState>();
+
+        public State Merge(IEnumerable<State> states)
         {
-            return mergers[state1] ?? mergers[state2] ?? new MergedState(state1, state2);
+            states = states.OrderBy(x => x.Name).ToList();
+            var merged = _merged.SingleOrDefault(x => x.States.OrderBy(y => y.Name).SequenceEqual(states));
+
+            if (merged == null)
+            {
+                merged = new MergedState(states);
+                _merged.Add(merged);
+            }
+
+            return merged;
         }
     }
 }

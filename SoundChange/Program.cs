@@ -60,7 +60,7 @@ namespace SoundChange
                 .Select(x => new RuleMachine(x as RuleNode, features, categories))
                 .ToList();
 
-            var s = rules[0].ApplyTo("apaka");
+            var s = rules[0].ApplyTo("kra");
         }
     }
 }

@@ -1,8 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
-namespace SoundChange.Nodes
+namespace SoundChange.Parser.Nodes
 {
     class RuleNode : Node
     {

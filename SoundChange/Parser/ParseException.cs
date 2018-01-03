@@ -1,6 +1,7 @@
-﻿using System;
+﻿using SoundChange.Lexer;
+using System;
 
-namespace SoundChange
+namespace SoundChange.Parser
 {
     class ParseException : ApplicationException
     {

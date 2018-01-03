@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace SoundChange.Nodes
+namespace SoundChange.Parser.Nodes
 {
     class FeatureSetNode : Node
     {

@@ -1,4 +1,4 @@
-﻿namespace SoundChange
+﻿namespace SoundChange.Lexer
 {
     enum TokenType
     {

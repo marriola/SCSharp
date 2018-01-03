@@ -1,11 +1,10 @@
 ﻿using SoundChange.StateMachines;
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
 
-namespace SoundChange
+namespace SoundChange.Lexer
 {
     class Lexer : IEnumerable<Token>
     {
@@ -65,7 +64,7 @@ namespace SoundChange
 
                 if (next.Type == TokenType.ERROR)
                 {
-                    throw new ApplicationException("Unexpected token.");
+                    throw new UnexpectedTokenException(next);
                 }
 
                 _tokens.Add(next);
@@ -114,7 +113,7 @@ namespace SoundChange
 
             if (value.Length >= 1)
             {
-                return Token.From(TokenType.WHITESPACE, value, position);
+                return new Token(TokenType.WHITESPACE, value, position);
             }
 
             while (true)
@@ -149,11 +148,11 @@ namespace SoundChange
             {
                 if (RE_IDENTIFIER.IsMatch(value))
                 {
-                    return Token.From(TokenType.IDENT, value, position);
+                    return new Token(TokenType.IDENT, value, position);
                 }
                 else if (RE_UTTERANCE.IsMatch(value))
                 {
-                    return Token.From(TokenType.UTTERANCE, value, position);
+                    return new Token(TokenType.UTTERANCE, value, position);
                 }
 
                 return TokenMachine.ERROR.Token.At(position);

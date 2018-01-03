@@ -1,4 +1,4 @@
-﻿namespace SoundChange.Nodes
+﻿namespace SoundChange.Parser.Nodes
 {
     class FeatureIdentifierNode : Node
     {

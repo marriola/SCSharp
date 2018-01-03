@@ -1,35 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace SoundChange
+namespace SoundChange.Parser
 {
-    class State
-    {
-        public virtual string Name { get; private set; }
-
-        public bool IsFinal { get; set; }
-
-        public Token Token { get; private set; }
-
-        public State(string name = null)
-        {
-            Name = name;
-        }
-
-        public State(Token token)
-        {
-            Name = token.Type.ToString();
-            Token = token;
-        }
-
-        public override string ToString()
-        {
-            return IsFinal
-                ? "(" + Name + ")"
-                : Name;
-        }
-    }
-
     class MergedState : State
     {
         public HashSet<State> States { get; private set; }
@@ -60,6 +33,8 @@ namespace SoundChange
                     States.Add(state);
                 }
             }
+
+            IsFinal = States.Any(x => x.IsFinal);
         }
 
         public List<State> Closure(char c, Dictionary<(State, char), State> transitions)
@@ -76,25 +51,6 @@ namespace SoundChange
             }
 
             return closure;
-        }
-    }
-
-    class MergedStateFactory
-    {
-        private List<MergedState> _merged = new List<MergedState>();
-
-        public State Merge(IEnumerable<State> states)
-        {
-            states = states.OrderBy(x => x.Name).ToList();
-            var merged = _merged.SingleOrDefault(x => x.States.OrderBy(y => y.Name).SequenceEqual(states));
-
-            if (merged == null)
-            {
-                merged = new MergedState(states);
-                _merged.Add(merged);
-            }
-
-            return merged;
         }
     }
 }

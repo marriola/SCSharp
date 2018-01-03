@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace SoundChange.Nodes
+namespace SoundChange.Parser.Nodes
 {
     class PlaceholderNode : Node
     {

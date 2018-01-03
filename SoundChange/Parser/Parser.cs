@@ -1,13 +1,14 @@
-﻿using SoundChange.Nodes;
+﻿using SoundChange.Lexer;
+using SoundChange.Parser.Nodes;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 
-namespace SoundChange
+namespace SoundChange.Parser
 {
     class Parser
     {
-        private readonly Lexer _lexer;
+        private readonly Lexer.Lexer _lexer;
 
         public bool HasNext
         {
@@ -19,7 +20,7 @@ namespace SoundChange
 
         public Parser(StreamReader stream)
         {
-            _lexer = new Lexer(stream)
+            _lexer = new Lexer.Lexer(stream)
             {
                 Tokens.LBRACE,
                 Tokens.RBRACE,

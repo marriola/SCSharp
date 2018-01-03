@@ -45,37 +45,40 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Input.cs" />
-    <Compile Include="Lexer.cs" />
-    <Compile Include="Nodes\BoundaryNode.cs" />
-    <Compile Include="Nodes\BuilderNode.cs" />
-    <Compile Include="Nodes\CategoryNode.cs" />
-    <Compile Include="Nodes\FeatureSetNode.cs" />
-    <Compile Include="Nodes\FeatureIdentifierNode.cs" />
-    <Compile Include="Nodes\IdentifierNode.cs" />
-    <Compile Include="Nodes\OptionalNode.cs" />
-    <Compile Include="Nodes\Node.cs" />
-    <Compile Include="Nodes\PlaceholderNode.cs" />
-    <Compile Include="Nodes\RuleNode.cs" />
-    <Compile Include="Nodes\TransformationNode.cs" />
-    <Compile Include="Nodes\UtteranceNode.cs" />
-    <Compile Include="ParseException.cs" />
-    <Compile Include="Parser.cs" />
+    <Compile Include="Factories\MergedStateFactory.cs" />
+    <Compile Include="Lexer\Lexer.cs" />
+    <Compile Include="Lexer\UnexpectedTokenException.cs" />
+    <Compile Include="Parser\MergedState.cs" />
+    <Compile Include="Parser\Nodes\BoundaryNode.cs" />
+    <Compile Include="Parser\Nodes\BuilderNode.cs" />
+    <Compile Include="Parser\Nodes\CategoryNode.cs" />
+    <Compile Include="Parser\Nodes\FeatureSetNode.cs" />
+    <Compile Include="Parser\Nodes\FeatureIdentifierNode.cs" />
+    <Compile Include="Parser\Nodes\IdentifierNode.cs" />
+    <Compile Include="Parser\Nodes\OptionalNode.cs" />
+    <Compile Include="Parser\Nodes\Node.cs" />
+    <Compile Include="Parser\Nodes\PlaceholderNode.cs" />
+    <Compile Include="Parser\Nodes\RuleNode.cs" />
+    <Compile Include="Parser\Nodes\TransformationNode.cs" />
+    <Compile Include="Parser\Nodes\UtteranceNode.cs" />
+    <Compile Include="Parser\ParseException.cs" />
+    <Compile Include="Parser\Parser.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="State.cs" />
-    <Compile Include="StateFactory.cs" />
+    <Compile Include="Parser\State.cs" />
+    <Compile Include="Factories\StateFactory.cs" />
     <Compile Include="StateMachines\RuleMachine.cs" />
     <Compile Include="StateMachines\TokenMachine.cs" />
     <Compile Include="StateMachines\TransitionTable.cs" />
-    <Compile Include="SyntaxException.cs" />
-    <Compile Include="Token.cs" />
-    <Compile Include="Tokens.cs" />
-    <Compile Include="TokenType.cs" />
+    <Compile Include="Parser\SyntaxException.cs" />
+    <Compile Include="Lexer\Token.cs" />
+    <Compile Include="Lexer\Tokens.cs" />
+    <Compile Include="Lexer\TokenType.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -1,4 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using SoundChange.Factories;
+using SoundChange.Lexer;
+using SoundChange.Parser;
+using System.Collections.Generic;
 
 namespace SoundChange.StateMachines
 {
@@ -6,7 +9,7 @@ namespace SoundChange.StateMachines
     {
         public static State START = new State("S");
 
-        public static State ERROR = new State(Token.From(TokenType.ERROR, string.Empty));
+        public static State ERROR = new State(new Token(TokenType.ERROR, string.Empty));
 
         private State _current;
 

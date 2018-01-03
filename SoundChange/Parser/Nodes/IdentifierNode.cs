@@ -1,10 +1,10 @@
-﻿namespace SoundChange.Nodes
+﻿namespace SoundChange.Parser.Nodes
 {
-    class UtteranceNode : Node
+    class IdentifierNode : Node
     {
         public string Value { get; private set; }
 
-        public UtteranceNode(string value)
+        public IdentifierNode(string value)
         {
             Value = value;
         }

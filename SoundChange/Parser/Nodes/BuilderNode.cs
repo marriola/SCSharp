@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace SoundChange.Nodes
+namespace SoundChange.Parser.Nodes
 {
     /// <summary>
     /// Represents a tree structure filled by breaking a list of strings down character by character.

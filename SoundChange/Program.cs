@@ -1,4 +1,6 @@
-﻿using SoundChange.Nodes;
+﻿using SoundChange.Lexer;
+using SoundChange.Parser;
+using SoundChange.Parser.Nodes;
 using SoundChange.StateMachines;
 using System;
 using System.Collections.Generic;
@@ -20,7 +22,7 @@ namespace SoundChange
 
             Console.OutputEncoding = Encoding.UTF8;
 
-            var parser = new Parser(new StreamReader(args[0]));
+            var parser = new Parser.Parser(new StreamReader(args[0]));
             var nodes = new List<Node>();
 
             try
@@ -35,6 +37,10 @@ namespace SoundChange
 
                     Console.WriteLine(node.ToString());
                 }
+            }
+            catch (UnexpectedTokenException ex)
+            {
+                Console.WriteLine(ex.Message);
             }
             catch (ParseException ex)
             {
@@ -60,7 +66,7 @@ namespace SoundChange
                 .Select(x => new RuleMachine(x as RuleNode, features, categories))
                 .ToList();
 
-            var s = rules[0].ApplyTo("kra");
+            var s = rules[1].ApplyTo("kraka");
         }
     }
 }

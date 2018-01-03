@@ -1,4 +1,6 @@
-﻿using SoundChange.Nodes;
+﻿using SoundChange.Factories;
+using SoundChange.Parser;
+using SoundChange.Parser.Nodes;
 using System.Collections.Generic;
 using System.Linq;
 

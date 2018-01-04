@@ -27,6 +27,18 @@ namespace SoundChange.StateMachines
 
         public RuleMachine(RuleNode rule, List<FeatureSetNode> features, List<CategoryNode> categories)
         {
+            var environment = rule.Environment;
+
+            // Remove optional nodes from the end
+            for (var i = environment.Count - 1; i >= 0; --i)
+            {
+                if (!(environment[i] is OptionalNode))
+                {
+                    environment.RemoveRange(i + 1, environment.Count - i - 1);
+                    break;
+                }
+            }
+
             var placeholder = rule.Environment.Single(x => x is PlaceholderNode) as PlaceholderNode;
             placeholder.Children = rule.Target;
 
@@ -35,7 +47,7 @@ namespace SoundChange.StateMachines
 
             _stateFactory = new StateFactory();
             _mergedStateFactory = new MergedStateFactory();
-            BuildNFA(rule.Environment, dFeatures, dCategories);
+            BuildNFA(environment, dFeatures, dCategories);
             ConvertToDFA();
         }
 

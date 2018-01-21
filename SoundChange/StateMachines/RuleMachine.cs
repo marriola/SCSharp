@@ -20,6 +20,8 @@ namespace SoundChange.StateMachines
         public static char START = '\u2402';
 
         public static char END = '\u2403';
+
+        public static string CONTROL_CHARS = $"{LAMBDA}{START}{END}";
     }
 
     class RuleMachine
@@ -100,20 +102,40 @@ namespace SoundChange.StateMachines
         /// <returns></returns>
         public string ApplyTo(string word)
         {
-            // TODO currently only recognizes matching words; must also apply transformation.
             var current = START;
             var nextWord = string.Empty;
             var builder = new StringBuilder();
+            var undoBuilder = new StringBuilder();
+            var isTransformationApplied = false;
 
             word = Special.START + word + Special.END;
 
             foreach (var c in word)
             {
                 var transition = _transitions.GetFirst(current, c);
+                var key = (current, c);
+
+                if (_transitions.Transforms.TryGetValue(key, out string transform))
+                {
+                    builder.Append(transform);
+                    undoBuilder.Append(c);
+                    isTransformationApplied = true;
+                }
+                else if (!_transitions.SuppressEmitTransitions.Contains(key) && !Special.CONTROL_CHARS.Contains(c))
+                {
+                    builder.Append(c);
+                }
 
                 if (transition == null)
                 {
                     current = TransitionFromStart(c);
+
+                    if (isTransformationApplied)
+                    {
+                        nextWord += undoBuilder.ToString();
+                        builder.Clear();
+                        undoBuilder.Clear();
+                    }
                 }
                 else
                 {
@@ -123,9 +145,14 @@ namespace SoundChange.StateMachines
                 if (current.IsFinal)
                 {
                     current = TransitionFromStart(c);
+
+                    nextWord += builder.ToString();
+                    builder.Clear();
+                    isTransformationApplied = false;
                 }
             }
 
+            nextWord += builder.ToString();
             return nextWord;
 
             State TransitionFromStart(char c)
@@ -411,23 +438,18 @@ namespace SoundChange.StateMachines
                         uResult = CreateWindowOver(resultNode, uNode);
                     }
 
-                    if (uResult == null)
-                    {
-                        throw new ApplicationException("Not enough ");
-                    }
-
                     var c = uNode.Value[k];
                     transformTo = uResult.Current.ToString();
 
                     // Apply a transformation if we're done matching the target utterance and there's more result
                     // utterance left, insert a new UtteranceNode to contain the remainder.
-                    if (k == uNode.Value.Length - 1 && uResult.Index < uResult.Contents.Count - 1)
+                    if (k == uNode.Value.Length - 1 && uResult.HasNext)
                     {
                         var remainder = string.Join(string.Empty, uResult.Contents).Substring(uResult.Index + 1);
 
-                        if (nodes.Index < nodes.Contents.Count - 1)
+                        if (nodes.HasNext)
                         {
-                            result.Contents.Insert(result.Index + 1, new UtteranceNode(remainder));
+                            result.Insert(result.Index + 1, new UtteranceNode(remainder));
                         }
                         else
                         {
@@ -498,6 +520,7 @@ namespace SoundChange.StateMachines
                             var next = _stateFactory.Next();
 
                             _transitions.Add(top.State, child.Character.Value, next);
+                            _transitions.SuppressSymbolEmission(top.State, child.Character.Value);
 
                             if (child.IsFinal)
                             {

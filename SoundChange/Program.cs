@@ -34,8 +34,6 @@ namespace SoundChange
                         continue;
 
                     nodes.Add(node);
-
-                    Console.WriteLine(node.ToString());
                 }
             }
             catch (UnexpectedTokenException ex)
@@ -64,14 +62,42 @@ namespace SoundChange
             nodes
                 .Where(x => x is RuleNode)
                 .ToList()
-                .ForEach(rule => ((RuleNode)rule).FitUtterancesToKeys(features, categories));
+                .ForEach(r => (r as RuleNode).FitUtterancesToKeys(features, categories));
 
             var rules = nodes
                 .Where(x => x is RuleNode)
-                .Select(x => new RuleMachine(x as RuleNode, features, categories))
+                .Select(x => (x as RuleNode, new RuleMachine(x as RuleNode, features, categories)))
                 .ToList();
 
-            var s = rules[1].ApplyTo("kraka");
+            while (true)
+            {
+                var rule = SelectRule(rules);
+
+                Console.Write("Enter a word to transform: ");
+                var inputWord = Console.ReadLine();
+
+                Console.WriteLine(rule.ApplyTo(inputWord));
+                Console.WriteLine();
+            }
+        }
+
+        private static RuleMachine SelectRule(List<(RuleNode rule, RuleMachine machine)> rules)
+        {
+            for (var i = 0; i < rules.Count; i++)
+            {
+                Console.WriteLine($"{i + 1}. {rules[i].rule.ToString()}");
+            }
+
+            while (true)
+            {
+                Console.Write("\nSelect a rule: ");
+                var answer = Console.ReadLine();
+
+                if (int.TryParse(answer, out int ruleNum) && ruleNum >= 1 && ruleNum <= rules.Count)
+                {
+                    return rules[ruleNum - 1].machine;
+                }
+            }
         }
     }
 }

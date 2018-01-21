@@ -4,7 +4,7 @@ using System.Linq;
 namespace SoundChange.StateMachines
 {
     /// <summary>
-    /// Provides a reversible iterator over an enumerable.
+    /// Provides a reversible iterator over an enumerable that may be mutated.
     /// </summary>
     /// <typeparam name="T">The type of objects to iterate over.</typeparam>
     class Window<T>
@@ -14,13 +14,13 @@ namespace SoundChange.StateMachines
         private int _index = 0;
 
         /// <summary>
-        /// Gets the contents of the window.
+        /// Gets the complete contents.
         /// </summary>
-        public List<T> Contents
+        public IReadOnlyCollection<T> Contents
         {
             get
             {
-                return _contents;
+                return _contents.AsReadOnly();
             }
         }
 
@@ -76,6 +76,17 @@ namespace SoundChange.StateMachines
         }
 
         /// <summary>
+        /// Gets a value indicating whether there are more contents past the current position of the window.
+        /// </summary>
+        public bool HasNext
+        {
+            get
+            {
+                return _index >= 0 && _index < _contents.Count - 1;
+            }
+        }
+
+        /// <summary>
         /// Gets a value indicating whether the window is out of bounds.
         /// </summary>
         public bool IsOutOfBounds
@@ -109,6 +120,25 @@ namespace SoundChange.StateMachines
         {
             --_index;
             return !IsOutOfBounds;
+        }
+
+        /// <summary>
+        /// Inserts an item in the contents.
+        /// </summary>
+        /// <param name="index">The index where the item will be inserted.</param>
+        /// <param name="item">The item to insert.</param>
+        public void Insert(int index, T item)
+        {
+            _contents.Insert(index, item);
+        }
+
+        /// <summary>
+        /// Removes an item from the contents.
+        /// </summary>
+        /// <param name="index">The index of the item to remove.</param>
+        public void RemoveAt(int index)
+        {
+            _contents.RemoveAt(index);
         }
     }
 

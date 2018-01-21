@@ -8,7 +8,15 @@ namespace SoundChange.StateMachines
     {
         public Dictionary<(State from, char on), StateCollection> Table { get; set; } = new Dictionary<(State from, char on), StateCollection>();
 
-        public Dictionary<(State from, char on), string> Transforms { get; set; } = new Dictionary<(State from, char on), string>(); 
+        public Dictionary<(State from, char on), string> Transforms { get; set; } = new Dictionary<(State from, char on), string>();
+
+        /// <summary>
+        /// Gets or sets the set of transitions for which emission of an output symbol should be suppressed.
+        /// </summary>
+        /// <remarks>
+        /// This set is used to suppress symbol emission so that multi-character segments can be treated as a single unit.
+        /// </remarks>
+        public HashSet<(State from, char on)> SuppressEmitTransitions { get; private set; } = new HashSet<(State from, char on)>();
 
         public bool Contains((State from, char on) key)
         {
@@ -40,6 +48,11 @@ namespace SoundChange.StateMachines
             {
                 Add(from, c, state);
             }
+        }
+
+        public void SuppressSymbolEmission(State from, char on)
+        {
+            SuppressEmitTransitions.Add((from, on));
         }
 
         public IEnumerable<State> GetAll(State state, char c)

@@ -23,15 +23,15 @@ namespace SoundChange.Parser.Nodes
         /// </summary>
         public BuilderNode Tree { get; private set; }
 
-        /// <summary>
-        /// Gets or sets the builder tree for segments that do not have this feature.
-        /// </summary>
-        //public BuilderNode MinusTree { get; private set; }
-
         public CompoundSetIdentifierNode()
         {
         }
 
+        /// <summary>
+        /// Creates the builder tree from the available feature sets and categories.
+        /// </summary>
+        /// <param name="features"></param>
+        /// <param name="categories"></param>
         public void Build(Dictionary<string, FeatureSetNode> features = null, Dictionary<string, CategoryNode> categories = null)
         {
             if (Members != null)

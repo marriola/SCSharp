@@ -255,42 +255,42 @@ namespace SoundChange.StateMachines
 
             dfa.Transforms = _transitions.Transforms;
             _transitions = dfa;
-        }
 
-        private HashSet<State> Travel(IEnumerable<State> states)
-        {
-            var result = new HashSet<State>(states);
-            var travelStack = new Stack<State>();
-
-            foreach (var state in states)
+            HashSet<State> Travel(IEnumerable<State> states)
             {
-                travelStack.Push(state);
-            }
+                var result = new HashSet<State>(states);
+                var travelStack = new Stack<State>();
 
-            // Follow lambda transitions up to states that have non-lambda transitions.
-            while (travelStack.Count > 0)
-            {
-                var top = travelStack.Pop();
-
-                foreach (var pair in _transitions.From(top))
+                foreach (var state in states)
                 {
-                    if (pair.Key.on == Special.LAMBDA)
+                    travelStack.Push(state);
+                }
+
+                // Follow lambda transitions up to states that have non-lambda transitions.
+                while (travelStack.Count > 0)
+                {
+                    var top = travelStack.Pop();
+
+                    foreach (var pair in _transitions.From(top))
                     {
-                        result.Remove(top);
-                        foreach (var state in pair.Value)
+                        if (pair.Key.on == Special.LAMBDA)
                         {
-                            travelStack.Push(state);
+                            result.Remove(top);
+                            foreach (var state in pair.Value)
+                            {
+                                travelStack.Push(state);
+                            }
+                        }
+                        else
+                        {
+                            result.Add(top);
+                            continue;
                         }
                     }
-                    else
-                    {
-                        result.Add(top);
-                        continue;
-                    }
                 }
-            }
 
-            return result;
+                return result;
+            }
         }
 
         private State BuildNFA(List<Node> nodes, List<Node> result, FeatureSetDictionary features, CategoryDictionary categories)
@@ -303,7 +303,7 @@ namespace SoundChange.StateMachines
             return BuildNFAInternal(nodes.ToWindow(), resultWindow, START, features, categories);
         }
 
-        private State BuildNFAInternal(
+        State BuildNFAInternal(
             Window<Node> nodes,
             Window<Node> result,
             State startNode,
@@ -326,40 +326,7 @@ namespace SoundChange.StateMachines
                         break;
 
                     case UtteranceNode uNode:
-                        var uNode_result = resultNode as UtteranceNode;
-                        var uResult = uNode_result.Value.ToWindow();
-                        var transformTo = string.Empty;
-
-                        for (int k = 0; k < uNode.Value.Length; k++, uResult.MoveNext())
-                        {
-                            if (uNode_result == null || uResult.IsOutOfBounds)
-                            {
-                                result.MoveNext();
-                                resultNode = result.Current; //resultNodes[++i_result];
-                                uNode_result = resultNode as UtteranceNode;
-                                uResult = uNode_result.Value.ToWindow();
-                            }
-
-                            if (uNode_result == null)
-                            {
-                                throw new ApplicationException("Not enough ");
-                            }
-
-                            var c = uNode.Value[k];
-                            transformTo = uResult.Current.ToString();
-
-                            // Apply a transformation if we're done matching the target utterance and there's more result
-                            // utterance left, insert a new UtteranceNode to contain the remainder.
-                            if (k == uNode.Value.Length - 1 && uResult.Index < uNode_result.Value.Length - 1)
-                            {
-                                if (uNode_result != null)
-                                {
-                                    result.Contents.Insert(result.Index + 1, new UtteranceNode(uNode_result.Value.Substring(uResult.Index + 1)));
-                                }
-                            }
-
-                            MatchCharacter(c, transformTo);
-                        }
+                        TransformUtterance(uNode, resultNode);
                         break;
 
                     case SetIdentifierNode fiNode:
@@ -370,14 +337,14 @@ namespace SoundChange.StateMachines
 
                         var feature = features[fiNode.Name];
 
-                        MatchSet(fiNode.IsPresent
+                        current = TransformSet(fiNode.IsPresent
                             ? feature.PlusTree
                             : feature.MinusTree,
                             resultNode);
                         break;
 
                     case CompoundSetIdentifierNode csiNode:
-                        MatchSet(csiNode.Tree, resultNode);
+                        current = TransformSet(csiNode.Tree, resultNode);
                         break;
 
                     case IdentifierNode iNode:
@@ -386,22 +353,11 @@ namespace SoundChange.StateMachines
                             throw new KeyNotFoundException($"Category '{iNode.Name}' not defined.");
                         }
 
-                        MatchSet(categories[iNode.Name].BuilderTree, resultNode);
+                        current = TransformSet(categories[iNode.Name].BuilderTree, resultNode);
                         break;
 
                     case OptionalNode oNode:
-                        var next = _stateFactory.Next();
-                        _transitions.Add(current, Special.LAMBDA, next);
-
-                        var subtree = _stateFactory.Next();
-                        _transitions.Add(current, Special.LAMBDA, subtree);
-
-                        var subtreeLast = BuildNFAInternal(oNode.Children.ToWindow(), result, subtree, features, categories);
-                        _transitions.Add(subtreeLast, Special.LAMBDA, next);
-
-                        var final = _stateFactory.Next();
-                        _transitions.Add(next, Special.LAMBDA, final);
-                        current = final;
+                        current = MatchOptional(oNode);
                         break;
 
                     case PlaceholderNode pNode:
@@ -424,30 +380,89 @@ namespace SoundChange.StateMachines
 
             return current;
 
-            TransformationNode Transform(string utterance, Node resultNode, bool add)
+            State MatchOptional(OptionalNode oNode)
             {
-                switch (resultNode)
+                var next = _stateFactory.Next();
+                _transitions.Add(current, Special.LAMBDA, next);
+
+                var subtree = _stateFactory.Next();
+                _transitions.Add(current, Special.LAMBDA, subtree);
+
+                var subtreeLast = BuildNFAInternal(oNode.Children.ToWindow(), result, subtree, features, categories);
+                _transitions.Add(subtreeLast, Special.LAMBDA, next);
+
+                var final = _stateFactory.Next();
+                _transitions.Add(next, Special.LAMBDA, final);
+
+                return final;
+            }
+
+            void TransformUtterance(UtteranceNode uNode, Node resultNode)
+            {
+                var uResult = CreateWindowOver(resultNode, uNode);
+                var transformTo = string.Empty;
+
+                for (int k = 0; k < uNode.Value.Length; k++, uResult.MoveNext())
                 {
-                    case UtteranceNode uResult:
-                        return new TransformationNode(utterance, uResult.Value);
+                    if (uResult == null || uResult.IsOutOfBounds)
+                    {
+                        result.MoveNext();
+                        resultNode = result.Current;
+                        uResult = CreateWindowOver(resultNode, uNode);
+                    }
 
-                    case CompoundSetIdentifierNode csResult:
-                        // TODO implement
-                        return null;
+                    if (uResult == null)
+                    {
+                        throw new ApplicationException("Not enough ");
+                    }
 
-                    case FeatureSetIdentifierNode sResult:
-                        var dic = add
-                            ? features[sResult.Name].Additions
-                            : features[sResult.Name].Removals;
+                    var c = uNode.Value[k];
+                    transformTo = uResult.Current.ToString();
 
-                        return new TransformationNode(utterance, dic[utterance]);
+                    // Apply a transformation if we're done matching the target utterance and there's more result
+                    // utterance left, insert a new UtteranceNode to contain the remainder.
+                    if (k == uNode.Value.Length - 1 && uResult.Index < uResult.Contents.Count - 1)
+                    {
+                        var remainder = string.Join(string.Empty, uResult.Contents).Substring(uResult.Index + 1);
 
-                    case CategoryIdentifierNode ciResult:
-                        // TODO move this check to parser
-                        throw new ApplicationException("Category identifier cannot appear in rule result.");
+                        if (nodes.Index < nodes.Contents.Count - 1)
+                        {
+                            result.Contents.Insert(result.Index + 1, new UtteranceNode(remainder));
+                        }
+                        else
+                        {
+                            transformTo += remainder;
+                        }
+                    }
+
+                    MatchCharacter(c, transformTo);
+                }
+            }
+
+            Window<char> CreateWindowOver(Node node, UtteranceNode targetNode)
+            {
+                if (node == null)
+                {
+                    throw new ArgumentNullException(nameof(node));
+                }
+
+                switch (node)
+                {
+                    case UtteranceNode uNode_result:
+                        return uNode_result.Value.ToWindow();
+
+                    case FeatureSetIdentifierNode fsiNode_result:
+                        var featureSet = features[fsiNode_result.Name];
+
+                        var subset = fsiNode_result.IsPresent
+                            ? featureSet.Additions
+                            : featureSet.Removals;
+
+                        subset.TryGetValue(targetNode.Value, out string transformResult);
+                        return transformResult.ToWindow();
 
                     default:
-                        throw new ApplicationException($"Cannot transform to {resultNode.GetType().Name}");
+                        throw new ApplicationException(node.GetType().Name + " is not valid in result section.");
                 }
             }
 
@@ -465,14 +480,9 @@ namespace SoundChange.StateMachines
                 current = next;
             }
 
-            void MatchSet(BuilderNode builder, Node transformation = null)
+            State TransformSet(BuilderNode builder, Node transformation = null)
             {
                 var final = _stateFactory.Next();
-                
-                //if (optional && !builder.Character.HasValue)
-                //{
-                //    _transitions.Add(current, Special.LAMBDA, final);
-                //}
 
                 var stack = new Stack<(State State, BuilderNode Node)>();
                 stack.Push((current, builder));
@@ -485,16 +495,15 @@ namespace SoundChange.StateMachines
                     {
                         if (child.Children.Any())
                         {
-                            // If a node has no siblings, do not add a transition for its NUL child.
-                            //if (child.Children.Count > 1 || child.Children[0].Character != Special.LAMBDA)
-                            //{
-                            //}
                             var next = _stateFactory.Next();
+
                             _transitions.Add(top.State, child.Character.Value, next);
+
                             if (child.IsFinal)
                             {
                                 _transitions.Add(top.State, child.Character.Value, final);
                             }
+
                             stack.Push((next, child));
                         }
                         else
@@ -529,16 +538,12 @@ namespace SoundChange.StateMachines
                                 // Apply transformation if one was found.
                                 _transitions.Transforms[(top.State, on)] = transformTo;
                             }
-                            //else
-                            //{
-                                //_transitions.Transforms[(top.State, on)] = child.Value;
-                            //}
+                            // TODO have input symbol "transform" into itself if no transformation found?
                         }
                     }
                 }
 
-                //optional = false;
-                current = final;
+                return final;
             }
         }
     }

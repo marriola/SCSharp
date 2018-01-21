@@ -59,9 +59,7 @@ namespace SoundChange.StateMachines
             _stateFactory = new StateFactory();
             _mergedStateFactory = new MergedStateFactory(HandleStatesMerged);
 
-            var resultWindow = rule.Result.ToWindow();
-            resultWindow.MoveBack();
-            BuildNFA(environment.ToWindow(), dFeatures, dCategories, result: resultWindow);
+            BuildNFA(environment, rule.Result, dFeatures, dCategories);
             ConvertToDFA();
         }
 
@@ -292,15 +290,24 @@ namespace SoundChange.StateMachines
             return result;
         }
 
-        private State BuildNFA(
-            Window<Node> nodes, 
-            FeatureSetDictionary features, 
-            CategoryDictionary categories, 
-            State startNode = null,
-            Window<Node> result = null,
-            bool transform = false)
+        private State BuildNFA(List<Node> nodes, List<Node> result, FeatureSetDictionary features, CategoryDictionary categories)
         {
-            var current = startNode ?? START;
+            // Move the result window back one place. Just before we begin iterating over the
+            // placeholder node, the window will be advanced to the beginning and begin moving.
+            var resultWindow = result.ToWindow();
+            resultWindow.MoveBack();
+
+            return BuildNFAInternal(nodes.ToWindow(), resultWindow, START, features, categories);
+        }
+
+        private State BuildNFAInternal(
+            Window<Node> nodes,
+            Window<Node> result,
+            State startNode,
+            FeatureSetDictionary features, 
+            CategoryDictionary categories)
+        {
+            var current = startNode;
 
             for (; !nodes.IsOutOfBounds; nodes.MoveNext())
             {
@@ -317,7 +324,7 @@ namespace SoundChange.StateMachines
 
                     case UtteranceNode uNode:
                         var uNode_result = resultNode as UtteranceNode;
-                        var uResult = uNode_result.Value.ToList().ToWindow();
+                        var uResult = uNode_result.Value.ToWindow();
                         var transformTo = string.Empty;
 
                         for (int k = 0; k < uNode.Value.Length; k++, uResult.MoveNext())
@@ -327,7 +334,7 @@ namespace SoundChange.StateMachines
                                 result.MoveNext();
                                 resultNode = result.Current; //resultNodes[++i_result];
                                 uNode_result = resultNode as UtteranceNode;
-                                uResult = uNode_result.Value.ToList().ToWindow();
+                                uResult = uNode_result.Value.ToWindow();
                             }
 
                             if (uNode_result == null)
@@ -338,19 +345,12 @@ namespace SoundChange.StateMachines
                             var c = uNode.Value[k];
                             transformTo = uResult.Current.ToString();
 
-                            //var transformation = k == uNode.Value.Length - 1
-                            //    ? new TransformationNode(uNode.Value, transformTo)
-                            //    : null;
-
                             // Apply a transformation if we're done matching the target utterance and there's more result
                             // utterance left, insert a new UtteranceNode to contain the remainder.
                             if (k == uNode.Value.Length - 1 && uResult.Index < uNode_result.Value.Length - 1)
                             {
                                 if (uNode_result != null)
                                 {
-                                    //result.Contents.RemoveAt(result.Index);
-                                    //result.Contents.Insert(result.Index, new UtteranceNode(uNode_result.Value.Substring(uResult.Index + 1)));
-                                    //result.MoveBack();
                                     result.Contents.Insert(result.Index + 1, new UtteranceNode(uNode_result.Value.Substring(uResult.Index + 1)));
                                 }
                             }
@@ -393,7 +393,7 @@ namespace SoundChange.StateMachines
                         var subtree = _stateFactory.Next();
                         _transitions.Add(current, Special.LAMBDA, subtree);
 
-                        var subtreeLast = BuildNFA(oNode.Children.ToWindow(), features, categories, subtree);
+                        var subtreeLast = BuildNFAInternal(oNode.Children.ToWindow(), result, subtree, features, categories);
                         _transitions.Add(subtreeLast, Special.LAMBDA, next);
 
                         var final = _stateFactory.Next();
@@ -402,8 +402,9 @@ namespace SoundChange.StateMachines
                         break;
 
                     case PlaceholderNode pNode:
+                        // Advance the result window to the beginning.
                         result.MoveNext();
-                        current = BuildNFA(pNode.Children.ToWindow(), features, categories, startNode: current, result: result, transform: true);
+                        current = BuildNFAInternal(pNode.Children.ToWindow(), result, current, features, categories);
                         break;
                 }
 

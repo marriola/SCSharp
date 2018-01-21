@@ -61,6 +61,11 @@ namespace SoundChange
                 .Where(x => x != null)
                 .ToList();
 
+            nodes
+                .Where(x => x is RuleNode)
+                .ToList()
+                .ForEach(rule => ((RuleNode)rule).FitUtterancesToKeys(features, categories));
+
             var rules = nodes
                 .Where(x => x is RuleNode)
                 .Select(x => new RuleMachine(x as RuleNode, features, categories))

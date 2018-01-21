@@ -2,6 +2,7 @@
 using SoundChange.Parser.Nodes;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 
 namespace SoundChange.Parser
@@ -68,8 +69,8 @@ namespace SoundChange.Parser
 
         private CategoryNode Category()
         {
-            var ident = Match(TokenType.IDENT, "Category");
-            Match(TokenType.LBRACE, "Category");
+            var ident = Match(TokenType.IDENT, nameof(Category));
+            Match(TokenType.LBRACE, nameof(Category));
 
             var members = new HashSet<string>();
 
@@ -87,7 +88,7 @@ namespace SoundChange.Parser
                 }
                 else
                 {
-                    throw new ParseException("Category", "an utterance or ']'", next);
+                    throw new ParseException(nameof(Category), "an utterance or ']'", next);
                 }
             }
 
@@ -102,12 +103,12 @@ namespace SoundChange.Parser
         /// <returns>A RuleNode if the following tokens describe a rule, a FeatureSetNode if they represent a feature set.</returns>
         private Node FeatureSet_Rule()
         {
-            Match(TokenType.LBRACK, "FeatureSet_Rule");
+            Match(TokenType.LBRACK, nameof(FeatureSet_Rule));
             var next = _lexer.Next(true);
 
-            if (next.Type == TokenType.IDENT)
+            if (next.Type == TokenType.IDENT && _lexer.Peek().Type == TokenType.RBRACK)
             {
-                Match(TokenType.RBRACK, "FeatureSet_Rule");
+                Match(TokenType.RBRACK, nameof(FeatureSet_Rule));
                 return FeatureSet(next.Value);
             }
             else
@@ -119,14 +120,14 @@ namespace SoundChange.Parser
 
         private FeatureSetNode FeatureSet(string name)
         {
-            Match(TokenType.LBRACE, "FeatureSet");
+            Match(TokenType.LBRACE, nameof(FeatureSet));
 
             var members = new HashSet<string>();
             var transformations = new List<(string from, string to)>();
 
             while (Member_Transform(members, transformations)) ;
 
-            Match(TokenType.RBRACE, "FeatureSet");
+            Match(TokenType.RBRACE, nameof(FeatureSet));
 
             return new FeatureSetNode(name, members, transformations);
         }
@@ -139,13 +140,13 @@ namespace SoundChange.Parser
         /// <returns>True if more child nodes remain; otherwise, false.</returns>
         private bool Member_Transform(HashSet<string> members, List<(string from, string to)> transformations)
         {
-            var utterance = Match(TokenType.UTTERANCE, "Member_Transform");
+            var utterance = Match(TokenType.UTTERANCE, nameof(Member_Transform));
             var next = _lexer.Next(true);
 
             switch (next.Type)
             {
                 case TokenType.ARROW:
-                    var to = Match(TokenType.UTTERANCE, "Member_Transform");
+                    var to = Match(TokenType.UTTERANCE, nameof(Member_Transform));
                     transformations.Add((utterance.Value, to.Value));
                     members.Add(to.Value);
 
@@ -164,7 +165,7 @@ namespace SoundChange.Parser
                     return false;
 
                 default:
-                    throw new ParseException("Member_Transform", "an identifier, '=>' or '}'", _lexer.Current);
+                    throw new ParseException(nameof(Member_Transform), "an identifier, '=>' or '}'", _lexer.Current);
             }
         }
 
@@ -176,21 +177,31 @@ namespace SoundChange.Parser
 
             var targetPosition = _lexer.Current.Position;
             RuleTarget(target);
+            var resultPosition = _lexer.Current.Position;
             RuleResult(result);
+
+            if (result.Any(x => x is CompoundSetIdentifierNode))
+            {
+                throw new SyntaxException(nameof(Rule), "Result may not contain a compound set identifier.", resultPosition);
+            }
+            else if (result.Any(x => x is SetIdentifierNode siNode && siNode.SetType == SetType.Category))
+            {
+                throw new SyntaxException(nameof(Rule), "Result may not contain a category identifier.", resultPosition);
+            }
 
             var envPosition = _lexer.Current.Position;
             var node = RuleEnvironment(target, result, environment);
 
             if (node.Target.Count == 0)
             {
-                throw new SyntaxException("Rule", "Target segment may not be empty.", targetPosition);
+                throw new SyntaxException(nameof(Rule), "Target segment may not be empty.", targetPosition);
             }
 
             for (var i = 1; i < environment.Count - 1; i++)
             {
                 if (environment[i] is BoundaryNode)
                 {
-                    throw new SyntaxException("Rule", "Boundary token may only appear at each end of the environment segment.", envPosition);
+                    throw new SyntaxException(nameof(Rule), "Boundary token may only appear at each end of the environment segment.", envPosition);
                 }
             }
 
@@ -206,7 +217,7 @@ namespace SoundChange.Parser
                 switch (next.Type)
                 {
                     case TokenType.LBRACK:
-                        target.Add(FeatureSetIdentifier());
+                        target.Add(CompoundSet_FeatureSetIdentifier());
                         break;
 
                     case TokenType.IDENT:
@@ -221,7 +232,7 @@ namespace SoundChange.Parser
                         return;
 
                     default:
-                        throw new ParseException("RuleTarget", "an identifier, '[' or '/'", next);
+                        throw new ParseException(nameof(RuleTarget), "an identifier, '[' or '/'", next);
                 }
             }
         }
@@ -235,7 +246,7 @@ namespace SoundChange.Parser
                 switch (next.Type)
                 {
                     case TokenType.LBRACK:
-                        result.Add(FeatureSetIdentifier());
+                        result.Add(CompoundSet_FeatureSetIdentifier());
                         break;
 
                     case TokenType.IDENT:
@@ -250,7 +261,7 @@ namespace SoundChange.Parser
                         return;
 
                     default:
-                        throw new ParseException("RuleResult", "an identifier, '[' or '/'", next);
+                        throw new ParseException(nameof(RuleResult), "an identifier, '[' or '/'", next);
                 }
             }
         }
@@ -267,13 +278,13 @@ namespace SoundChange.Parser
                 switch (next.Type)
                 {
                     case TokenType.LBRACK:
-                        parent.Add(FeatureSetIdentifier());
+                        parent.Add(CompoundSet_FeatureSetIdentifier());
                         break;
 
                     case TokenType.PLACEHOLDER:
                         if (optional != null)
                         {
-                            throw new SyntaxException("RuleEnvironment", "Placeholder cannot be optional.", next.Position);
+                            throw new SyntaxException(nameof(RuleEnvironment), "Placeholder cannot be optional.", next.Position);
                         }
                         parent.Add(new PlaceholderNode());
                         break;
@@ -289,7 +300,7 @@ namespace SoundChange.Parser
                     case TokenType.BOUNDARY:
                         if (optional != null)
                         {
-                            throw new SyntaxException("RuleEnvironment", "Boundary cannot be optional.", next.Position);
+                            throw new SyntaxException(nameof(RuleEnvironment), "Boundary cannot be optional.", next.Position);
                         }
                         parent.Add(new BoundaryNode());
                         break;
@@ -297,7 +308,7 @@ namespace SoundChange.Parser
                     case TokenType.LPAREN:
                         if (optional != null)
                         {
-                            throw new ParseException("RuleEnvironment", "utterance, identifier, placeholder, category identifier, feature identifier, or ')'", next);
+                            throw new ParseException(nameof(RuleEnvironment), "utterance, identifier, placeholder, category identifier, feature identifier, or ')'", next);
                         }
                         optional = new OptionalNode();
                         parent = optional.Children;
@@ -307,7 +318,7 @@ namespace SoundChange.Parser
                     case TokenType.RPAREN:
                         if (optional == null)
                         {
-                            throw new ParseException("RuleEnvironment", "utterance, identifier, placeholder, category identifier, feature identifier, or '('", next);
+                            throw new ParseException(nameof(RuleEnvironment), "utterance, identifier, placeholder, category identifier, feature identifier, or '('", next);
                         }
                         optional = null;
                         parent = environment;
@@ -321,19 +332,59 @@ namespace SoundChange.Parser
             }
         }
 
-        private FeatureIdentifierNode FeatureSetIdentifier(bool optional = false)
+        private Node CompoundSet_FeatureSetIdentifier()
+        {
+            var node = new CompoundSetIdentifierNode();
+
+            while (true)
+            {
+                var next = _lexer.Next();
+
+                switch (next.Type)
+                {
+                    case TokenType.IDENT:
+                        node.Children.Add(new SetIdentifierNode(true, next.Value, SetType.Category));
+                        break;
+
+                    case TokenType.PLUS:
+                    case TokenType.MINUS:
+                        var ident = _lexer.Next();
+                        node.Children.Add(new SetIdentifierNode(next.Type == TokenType.PLUS, ident.Value, SetType.Feature));
+                        break;
+
+                    case TokenType.RBRACK:
+                        if (node.Children.Count == 0)
+                        {
+                            throw new SyntaxException(nameof(CompoundSet_FeatureSetIdentifier), "Compound set identifier cannot be empty.", next.Position);
+                        }
+                        else if (node.Children.Count == 1)
+                        {
+                            return node.Children[0];
+                        }
+                        else
+                        {
+                            return node;
+                        }
+
+                    default:
+                        throw new ParseException(nameof(CompoundSet_FeatureSetIdentifier), "an identifier, '+', '-' or ']'", next);
+                }
+            }
+        }
+
+        private SetIdentifierNode FeatureSetIdentifier()
         {
             var presenceToken = _lexer.Next();
             if (presenceToken.Type != TokenType.PLUS && presenceToken.Type != TokenType.MINUS)
             {
-                throw new ParseException("FeatureSetIdentifier", "'+' or '-'", presenceToken);
+                throw new ParseException(nameof(FeatureSetIdentifier), "'+' or '-'", presenceToken);
             }
 
             var isPresent = presenceToken.Type == TokenType.PLUS;
             var ident = _lexer.Next();
-            Match(TokenType.RBRACK, "FeatureSetIdentifier");
+            Match(TokenType.RBRACK, nameof(FeatureSetIdentifier));
 
-            return new FeatureIdentifierNode(isPresent, ident.Value);
+            return new SetIdentifierNode(isPresent, ident.Value, SetType.Feature);
         }
 
         private Token Match(TokenType type, string rule)

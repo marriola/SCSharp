@@ -7,14 +7,6 @@ namespace SoundChange.Parser
     {
         public HashSet<State> States { get; private set; }
 
-        public override string Name
-        {
-            get
-            {
-                return string.Join(",", States.Select(x => x.Name));
-            }
-        }
-
         public MergedState(IEnumerable<State> states)
         {
             States = new HashSet<State>();
@@ -35,6 +27,14 @@ namespace SoundChange.Parser
             }
 
             IsFinal = States.Any(x => x.IsFinal);
+
+            var stateNames = States
+                .Select(x => x.Name)
+                .OrderBy(x => x[0] == 'q'
+                    ? int.Parse(x.Substring(1))
+                    : -1);
+
+            Name = string.Join("+", stateNames);
         }
 
         public List<State> Closure(char c, Dictionary<(State, char), State> transitions)

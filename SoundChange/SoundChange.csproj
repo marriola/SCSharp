@@ -44,18 +44,20 @@
   <ItemGroup>
     <Compile Include="Factories\MergedStateFactory.cs" />
     <Compile Include="Lexer\Lexer.cs" />
+    <Compile Include="Lexer\SetType.cs" />
     <Compile Include="Lexer\UnexpectedTokenException.cs" />
     <Compile Include="Parser\MergedState.cs" />
     <Compile Include="Parser\Nodes\BoundaryNode.cs" />
     <Compile Include="Parser\Nodes\BuilderNode.cs" />
     <Compile Include="Parser\Nodes\CategoryNode.cs" />
     <Compile Include="Parser\Nodes\FeatureSetNode.cs" />
-    <Compile Include="Parser\Nodes\FeatureIdentifierNode.cs" />
+    <Compile Include="Parser\Nodes\SetIdentifierNode.cs" />
     <Compile Include="Parser\Nodes\IdentifierNode.cs" />
     <Compile Include="Parser\Nodes\OptionalNode.cs" />
     <Compile Include="Parser\Nodes\Node.cs" />
     <Compile Include="Parser\Nodes\PlaceholderNode.cs" />
     <Compile Include="Parser\Nodes\RuleNode.cs" />
+    <Compile Include="Parser\Nodes\CompoundSetIdentifierNode.cs" />
     <Compile Include="Parser\Nodes\TransformationNode.cs" />
     <Compile Include="Parser\Nodes\UtteranceNode.cs" />
     <Compile Include="Parser\ParseException.cs" />
@@ -65,12 +67,14 @@
     <Compile Include="Parser\State.cs" />
     <Compile Include="Factories\StateFactory.cs" />
     <Compile Include="StateMachines\RuleMachine.cs" />
+    <Compile Include="StateMachines\StateCollection.cs" />
     <Compile Include="StateMachines\TokenMachine.cs" />
     <Compile Include="StateMachines\TransitionTable.cs" />
     <Compile Include="Parser\SyntaxException.cs" />
     <Compile Include="Lexer\Token.cs" />
     <Compile Include="Lexer\Tokens.cs" />
     <Compile Include="Lexer\TokenType.cs" />
+    <Compile Include="StateMachines\Window.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

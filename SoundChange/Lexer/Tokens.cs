@@ -14,5 +14,6 @@
         public static readonly Token ARROW = new Token(TokenType.ARROW, "=>");
         public static readonly Token PLUS = new Token(TokenType.PLUS, "+");
         public static readonly Token MINUS = new Token(TokenType.MINUS, "-");
+        public static readonly Token REQUIRE = new Token(TokenType.REQUIRE, "!");
     }
 }

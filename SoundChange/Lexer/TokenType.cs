@@ -16,7 +16,7 @@
         ARROW,
         PLUS,
         MINUS,
-        PHONE,
+        REQUIRE,
         IDENT,
         UTTERANCE
     }

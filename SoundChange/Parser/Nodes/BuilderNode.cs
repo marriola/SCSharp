@@ -9,37 +9,80 @@ namespace SoundChange.Parser.Nodes
     /// </summary>
     class BuilderNode
     {
+        public bool IsFinal { get; private set; }
+
         public string Value { get; private set; }
+
+        public BuilderNode Parent { get; private set; }
 
         public char? Character { get; private set; }
 
         public List<BuilderNode> Children { get; private set; }
 
-        public BuilderNode(string value = null, char? character = null)
+        public IEnumerable<BuilderNode> Siblings
         {
-            Value = value;
-            Character = character;
-            Children = new List<BuilderNode>();
+            get
+            {
+                return Parent.Children.Where(x => x != this);
+            }
         }
 
-        public static BuilderNode TreeFrom(IEnumerable<string> keys, string head = "", char? character = null)
+        public BuilderNode(string value = null)
         {
-            var root = new BuilderNode(
-                head == string.Empty
+            Value = value;
+            Character = null;
+            Children = new List<BuilderNode>();
+            Parent = null;
+        }
+
+        private static readonly string EMPTY = StateMachines.Special.LAMBDA.ToString();
+
+        public static BuilderNode TreeFrom(IEnumerable<string> keys, string head = "", bool isFinal = false, char? character = null, BuilderNode parent = null)
+        {
+            var root = new BuilderNode
+            {
+                Value = head == string.Empty
                     ? null
                     : head,
-                character);
+                IsFinal = isFinal,
+                Character = character,
+                Parent = parent
+            };
 
-            foreach (var group in keys.GroupBy(key => key[0]))
+            var groupedKeys = keys
+                .GroupBy(key => key[0]);
+
+            foreach (var group in groupedKeys)
             {
                 var follow = group
-                    .Where(x => x.Length > 1)
-                    .Select(x => x.Substring(1));
+                    .Where(x => x != EMPTY)
+                    .Select(x => x.Length > 1
+                        ? x.Substring(1)
+                        : EMPTY);
 
-                root.Children.Add(TreeFrom(follow, head + group.Key, group.Key));
+                if (follow.Count() == 1 && follow.First() == EMPTY)
+                {
+                    follow = new List<string>();
+                }
+
+                var next = group.Key == StateMachines.Special.LAMBDA
+                    ? head
+                    : head + group.Key;
+
+                root.Children.Add(TreeFrom(
+                    follow,
+                    head: next,
+                    isFinal: keys.Contains(next),
+                    character: group.Key,
+                    parent: root));
             }
 
             return root;
+        }
+
+        public override string ToString()
+        {
+            return Value;
         }
     }
 }

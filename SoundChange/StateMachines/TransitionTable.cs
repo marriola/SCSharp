@@ -6,9 +6,11 @@ namespace SoundChange.StateMachines
 {
     class TransitionTable
     {
-        public Dictionary<(State, char), List<State>> Table { get; set; } = new Dictionary<(State, char), List<State>>();
+        public Dictionary<(State from, char on), StateCollection> Table { get; set; } = new Dictionary<(State from, char on), StateCollection>();
 
-        public bool Contains((State, char) key)
+        public Dictionary<(State from, char on), string> Transforms { get; set; } = new Dictionary<(State from, char on), string>(); 
+
+        public bool Contains((State from, char on) key)
         {
             return Table.ContainsKey(key);
         }
@@ -23,7 +25,7 @@ namespace SoundChange.StateMachines
             }
             else
             {
-                Table[key] = new List<State> { to };
+                Table[key] = StateCollection.From(to);
             }
         }
 
@@ -49,23 +51,23 @@ namespace SoundChange.StateMachines
                 : null;
         }
 
-        public IEnumerable<KeyValuePair<(State, char), List<State>>> From(State state)
+        public IEnumerable<KeyValuePair<(State from, char on), StateCollection>> From(State state)
         {
             if (state is MergedState ms)
             {
-                return Table.Where(x => ms.States.Contains(x.Key.Item1));
+                return Table.Where(x => ms.States.Contains(x.Key.from));
             }
             else
             {
-                return Table.Where(x => x.Key.Item1 == state);
+                return Table.Where(x => x.Key.from == state);
             }
         }
 
-        public IEnumerable<(char, List<State>)> GetAll(State state)
+        public IEnumerable<(char, StateCollection)> GetAll(State state)
         {
             return Table
-                .Where(x => x.Key.Item1 == state)
-                .Select(x => (x.Key.Item2, Table[x.Key]))
+                .Where(x => x.Key.from == state)
+                .Select(x => (x.Key.on, Table[x.Key]))
                 .ToList();
         }
 

@@ -2,16 +2,16 @@
 {
     class IdentifierNode : Node
     {
-        public string Value { get; private set; }
+        public string Name { get; protected set; }
 
-        public IdentifierNode(string value)
+        public IdentifierNode(string name)
         {
-            Value = value;
+            Name = name;
         }
 
         public override string ToString()
         {
-            return Value;
+            return Name;
         }
     }
 }

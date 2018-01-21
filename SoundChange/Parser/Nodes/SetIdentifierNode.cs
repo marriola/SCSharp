@@ -1,31 +1,40 @@
-﻿using SoundChange.Lexer;
-
-namespace SoundChange.Parser.Nodes
+﻿namespace SoundChange.Parser.Nodes
 {
     class SetIdentifierNode : IdentifierNode
     {
-        public SetType SetType { get; private set; }
+        public bool IsPresent { get; protected set; }
 
-        public bool IsPresent { get; private set; }
-
-        public SetIdentifierNode(bool isPresent, string name, SetType setType)
+        public SetIdentifierNode(bool isPresent, string name)
             : base(name)
         {
             IsPresent = isPresent;
-            SetType = setType;
+        }
+    }
+
+    class FeatureSetIdentifierNode : SetIdentifierNode
+    {
+        public FeatureSetIdentifierNode(bool isPresent, string name)
+            : base(isPresent, name)
+        {
         }
 
         public override string ToString()
         {
-            if (SetType == SetType.Feature)
-            {
-                var sign = IsPresent ? "+" : "-";
-                return $"[{sign}{Name}]";
-            }
-            else
-            {
-                return Name;
-            }
+            var sign = IsPresent ? "+" : "-";
+            return $"[{sign}{Name}]";
+        }
+    }
+
+    class CategoryIdentifierNode : SetIdentifierNode
+    {
+        public CategoryIdentifierNode(string name)
+            : base(true, name)
+        {
+        }
+
+        public override string ToString()
+        {
+            return Name;
         }
     }
 }

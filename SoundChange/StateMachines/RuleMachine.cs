@@ -154,9 +154,9 @@ namespace SoundChange.StateMachines
 
                 if (possibleTransitions.ContainsKey(Special.LAMBDA))
                 {
+                    // Follow each lambda transition to the first non-lambda transition, and add each to possibleTransitions.
                     var travelStack = new Stack<State>();
 
-                    // Follow each lambda transition to the first non-lambda transition, and add each to possibleTransitions.
                     foreach (var state in Travel(possibleTransitions[Special.LAMBDA]))
                     {
                         travelStack.Push(state);
@@ -165,11 +165,10 @@ namespace SoundChange.StateMachines
                     while (travelStack.Count > 0)
                     {
                         var state = travelStack.Pop();
-
                         var transitions = _transitions.From(state);
+
                         foreach (var transition in transitions)
                         {
-                            // TODO verify handling of states with mixed lambda and non-lambda transitions works.
                             if (transition.Key.on == Special.LAMBDA)
                             {
                                 foreach (var next in _transitions.From(state).Select(x => x.Value).SelectMany(x => x))
@@ -203,6 +202,7 @@ namespace SoundChange.StateMachines
 
                 foreach (var key in possibleTransitions.Keys)
                 {
+                    // We'll handle lambda transitions in the next step.
                     if (key == Special.LAMBDA)
                         continue;
 
@@ -215,26 +215,29 @@ namespace SoundChange.StateMachines
                     }
                     else
                     {
-                        groupedTransitions.Add((top, key, charStates.FirstOrDefault()));
+                        groupedTransitions.Add((top, key, charStates.First()));
                     }
                 }
 
-                // Follow states with lambda transitions to the end and replace them with non-lambdas.
+                // Replace each transition to a state that has lambda transitions with a transition to
+                // a merged set of states that has no lambda transitions.
                 foreach (var transition in new List<(State from, char on, State to)>(groupedTransitions))
                 {
                     var follow = _transitions.From(transition.to);
 
                     if (!follow.Any(x => x.Key.on == Special.LAMBDA))
                         continue;
-
+                    
+                    // Compute travel set of states that have transitions on lambda.
                     var travelSet = Travel(new List<State> { transition.to });
 
+                    // Add back in any non-lambda transitions we can take from the origin state.
                     foreach (var t in follow.Where(x => x.Key.on != Special.LAMBDA))
                     {
-                        //t.Value.ToList().ForEach(s => travelSet.Add(s));
                         travelSet.Add(t.Key.from);
                     }
 
+                    // Merge the travel set into a new state and retarget the original transition to it.
                     groupedTransitions.Remove(transition);
                     groupedTransitions.Add((transition.from, transition.on, _mergedStateFactory.Merge(travelSet)));
                 }
@@ -432,18 +435,16 @@ namespace SoundChange.StateMachines
                         // TODO implement
                         return null;
 
-                    case SetIdentifierNode sResult:
-                        if (sResult.SetType == Lexer.SetType.Category)
-                        {
-                            // TODO move this check to parser
-                            throw new ApplicationException("Category identifier cannot appear in rule result.");
-                        }
-
+                    case FeatureSetIdentifierNode sResult:
                         var dic = add
                             ? features[sResult.Name].Additions
                             : features[sResult.Name].Removals;
 
                         return new TransformationNode(utterance, dic[utterance]);
+
+                    case CategoryIdentifierNode ciResult:
+                        // TODO move this check to parser
+                        throw new ApplicationException("Category identifier cannot appear in rule result.");
 
                     default:
                         throw new ApplicationException($"Cannot transform to {resultNode.GetType().Name}");

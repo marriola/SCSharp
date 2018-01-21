@@ -184,7 +184,7 @@ namespace SoundChange.Parser
             {
                 throw new SyntaxException(nameof(Rule), "Result may not contain a compound set identifier.", resultPosition);
             }
-            else if (result.Any(x => x is SetIdentifierNode siNode && siNode.SetType == SetType.Category))
+            else if (result.Any(x => x is CategoryIdentifierNode))
             {
                 throw new SyntaxException(nameof(Rule), "Result may not contain a category identifier.", resultPosition);
             }
@@ -343,13 +343,13 @@ namespace SoundChange.Parser
                 switch (next.Type)
                 {
                     case TokenType.IDENT:
-                        node.Children.Add(new SetIdentifierNode(true, next.Value, SetType.Category));
+                        node.Children.Add(new CategoryIdentifierNode(next.Value));
                         break;
 
                     case TokenType.PLUS:
                     case TokenType.MINUS:
                         var ident = _lexer.Next();
-                        node.Children.Add(new SetIdentifierNode(next.Type == TokenType.PLUS, ident.Value, SetType.Feature));
+                        node.Children.Add(new FeatureSetIdentifierNode(next.Type == TokenType.PLUS, ident.Value));
                         break;
 
                     case TokenType.RBRACK:
@@ -384,7 +384,7 @@ namespace SoundChange.Parser
             var ident = _lexer.Next();
             Match(TokenType.RBRACK, nameof(FeatureSetIdentifier));
 
-            return new SetIdentifierNode(isPresent, ident.Value, SetType.Feature);
+            return new FeatureSetIdentifierNode(isPresent, ident.Value);
         }
 
         private Token Match(TokenType type, string rule)

@@ -44,7 +44,6 @@
   <ItemGroup>
     <Compile Include="Factories\MergedStateFactory.cs" />
     <Compile Include="Lexer\Lexer.cs" />
-    <Compile Include="Lexer\SetType.cs" />
     <Compile Include="Lexer\UnexpectedTokenException.cs" />
     <Compile Include="Parser\MergedState.cs" />
     <Compile Include="Parser\Nodes\BoundaryNode.cs" />

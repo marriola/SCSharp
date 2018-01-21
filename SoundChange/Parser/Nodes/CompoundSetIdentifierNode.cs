@@ -1,20 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SoundChange.Parser.Nodes
 {
+    /// <summary>
+    /// Represents the intersection of a list of feature sets and categories.
+    /// </summary>
     class CompoundSetIdentifierNode : Node
     {
+        /// <summary>
+        /// Gets or sets the list of feature set and category identifiers.
+        /// </summary>
         public List<SetIdentifierNode> Children { get; private set; } = new List<SetIdentifierNode>();
 
+        /// <summary>
+        /// Gets or sets the set of segments present in the intersection of sets.
+        /// </summary>
         public HashSet<string> Members { get; private set; }
-
-        public Dictionary<string, string> Additions { get; private set; } = new Dictionary<string, string>();
-
-        public Dictionary<string, string> Removals { get; private set; } = new Dictionary<string, string>();
 
         /// <summary>
         /// Gets or sets the builder tree for segments that have this feature.
@@ -43,37 +45,53 @@ namespace SoundChange.Parser.Nodes
             {
                 var memberCount = Members.Count;
 
-                if (child.SetType == Lexer.SetType.Feature)
+                switch (child)
                 {
-                    var featureSet = features[child.Name];
+                    case FeatureSetIdentifierNode fsiNode:
+                        var featureSet = features[child.Name];
+                        var subset = child.IsPresent
+                            ? featureSet.Removals
+                            : featureSet.Additions;
 
-                    foreach (var pair in featureSet.Removals)
-                    {
-                        if (memberCount > 0 && !Members.Contains(pair.Key))
-                            continue;
+                        if (Members.Count == 0)
+                        {
+                            Members = new HashSet<string>(subset.Keys);
+                        }
+                        else
+                        {
+                            Members = new HashSet<string>(Members.Intersect(subset.Keys));
+                        }
 
-                        Removals[pair.Key] = pair.Value;
-                        Members.Add(pair.Key);
-                    }
+                        //foreach (var pair in subset)
+                        //{
+                        //    if (memberCount > 0 && !Members.Contains(pair.Key))
+                        //        continue;
 
-                    foreach (var pair in featureSet.Additions)
-                    {
-                        if (memberCount > 0 && !Members.Contains(pair.Key))
-                            continue;
+                        //    Members.Add(pair.Key);
+                        //}
 
-                        Additions[pair.Key] = pair.Value;
-                        Members.Add(pair.Key);
-                    }
-                }
-                else if (child.SetType == Lexer.SetType.Category)
-                {
-                    foreach (var key in categories[child.Name].Members)
-                    {
-                        if (memberCount > 0 && !Members.Contains(key))
-                            continue;
+                        break;
 
-                        Members.Add(key);
-                    }
+                    case CategoryIdentifierNode ciNode:
+                        var category = categories[child.Name].Members;
+
+                        if (Members.Count == 0)
+                        {
+                            Members = new HashSet<string>(category);
+                        }
+                        else
+                        {
+                            Members = new HashSet<string>(Members.Intersect(category));
+                        }
+
+                        //foreach (var key in categories[child.Name].Members)
+                        //{
+                        //    if (memberCount > 0 && !Members.Contains(key))
+                        //        continue;
+
+                        //    Members.Add(key);
+                        //}
+                        break;
                 }
             }
 

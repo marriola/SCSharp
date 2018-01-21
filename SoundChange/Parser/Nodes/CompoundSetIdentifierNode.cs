@@ -49,26 +49,24 @@ namespace SoundChange.Parser.Nodes
                 {
                     case FeatureSetIdentifierNode fsiNode:
                         var featureSet = features[child.Name];
-                        var subset = child.IsPresent
-                            ? featureSet.Removals
-                            : featureSet.Additions;
 
                         if (Members.Count == 0)
                         {
-                            Members = new HashSet<string>(subset.Keys);
+                            Members = new HashSet<string>(child.IsPresent
+                            ? featureSet.Members.ToList()
+                            : featureSet.Removals.Keys.ToList());
                         }
                         else
                         {
-                            Members = new HashSet<string>(Members.Intersect(subset.Keys));
+                            if (child.IsPresent)
+                            {
+                                Members = new HashSet<string>(Members.Intersect(featureSet.Removals.Keys));
+                            }
+                            else
+                            {
+                                Members = new HashSet<string>(Members.Except(featureSet.Members));
+                            }
                         }
-
-                        //foreach (var pair in subset)
-                        //{
-                        //    if (memberCount > 0 && !Members.Contains(pair.Key))
-                        //        continue;
-
-                        //    Members.Add(pair.Key);
-                        //}
 
                         break;
 
@@ -84,13 +82,6 @@ namespace SoundChange.Parser.Nodes
                             Members = new HashSet<string>(Members.Intersect(category));
                         }
 
-                        //foreach (var key in categories[child.Name].Members)
-                        //{
-                        //    if (memberCount > 0 && !Members.Contains(key))
-                        //        continue;
-
-                        //    Members.Add(key);
-                        //}
                         break;
                 }
             }

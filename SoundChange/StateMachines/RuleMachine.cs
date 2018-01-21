@@ -411,7 +411,7 @@ namespace SoundChange.StateMachines
                         break;
                 }
 
-                if (startNode == null && nodes.AtEnd)
+                if (startNode == START && nodes.AtEnd)
                 {
                     current.IsFinal = true;
                 }

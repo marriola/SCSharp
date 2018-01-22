@@ -1,17 +1,28 @@
 ﻿using SoundChange.Lexer;
-using SoundChange.Parser.Nodes;
 
 namespace SoundChange.Parser
 {
     class State
     {
+        /// <summary>
+        /// Gets or sets the name.
+        /// </summary>
         public virtual string Name { get; protected set; }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether this state is a final state.
+        /// </summary>
         public bool IsFinal { get; set; }
 
-        public Token Token { get; private set; }
+        /// <summary>
+        /// Gets or sets a value indicating whether this state matches part of the result section.
+        /// </summary>
+        public bool IsTarget { get; set; }
 
-        public TransformationNode Transformation { get; set; }
+        /// <summary>
+        /// Gets or sets the token.
+        /// </summary>
+        public Token Token { get; private set; }
 
         public State(string name = null)
         {

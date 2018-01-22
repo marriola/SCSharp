@@ -7,22 +7,92 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Utility.CommandLine;
 
 namespace SoundChange
 {
-    class Program
+    internal class Program
     {
+        [Argument('r', "rules")]
+        private static string RulesFile { get; set; }
+
+        [Argument('l', "lexicon")]
+        private static string LexiconFile { get; set; }
+
+        [Argument('v', "verbose")]
+        private static bool Verbose { get; set; }
+
         static void Main(string[] args)
         {
+            Console.InputEncoding = Encoding.UTF8;
+            Console.OutputEncoding = Encoding.UTF8;
+
             if (args.Length == 0)
             {
-                Console.WriteLine("usage: SoundChange filename");
+                Console.WriteLine("usage: SoundChange [rules] [lexicon]");
                 return;
             }
 
-            Console.OutputEncoding = Encoding.UTF8;
+            Arguments.Populate();
+            var rules = ParseRules(RulesFile);
+            var lexicon = ReadLexicon(LexiconFile);
 
-            var parser = new Parser.Parser(new StreamReader(args[0]));
+            using (var writer = new StreamWriter(LexiconFile + ".out"))
+            {
+                foreach (var word in lexicon)
+                {
+                    var nextWord = TransformWord(word, rules, out List<string> transformations);
+                    writer.WriteLine(nextWord);
+
+                    if (Verbose)
+                        transformations.ForEach(t => writer.WriteLine($"    {t}"));
+                }
+            }
+        }
+
+        private static string TransformWord(string inputWord, List<RuleMachine> rules, out List<string> transformations)
+        {
+            var result = inputWord;
+            transformations = new List<string>();
+
+            foreach (var rule in rules)
+            {
+                var oldWord = result;
+                result = rule.ApplyTo(result, out List<string> ruleTransformations);
+
+                if (ruleTransformations.Any())
+                {
+                    transformations.Add(rule.Rule.ToString());
+                    transformations.Add($"    {oldWord} → {result}");
+                }
+
+                transformations.AddRange(ruleTransformations
+                    .Select(t => $"        {t}"));
+            }
+
+            return result;
+        }
+
+        private static List<string> ReadLexicon(string path)
+        {
+            var lexicon = new List<string>();
+
+            using (var reader = new StreamReader(path))
+            {
+                while (!reader.EndOfStream)
+                {
+                    var line = reader.ReadLine().Trim();
+                    if (line.Length > 0)
+                        lexicon.Add(line);
+                }
+            }
+
+            return lexicon;
+        }
+
+        private static List<RuleMachine> ParseRules(string path)
+        {
+            var parser = new Parser.Parser(new StreamReader(path));
             var nodes = new List<Node>();
 
             try
@@ -64,28 +134,17 @@ namespace SoundChange
                 .ToList()
                 .ForEach(r => (r as RuleNode).FitUtterancesToKeys(features, categories));
 
-            var rules = nodes
+            return nodes
                 .Where(x => x is RuleNode)
-                .Select(x => (x as RuleNode, new RuleMachine(x as RuleNode, features, categories)))
+                .Select(x => new RuleMachine(x as RuleNode, features, categories))
                 .ToList();
-
-            while (true)
-            {
-                var rule = SelectRule(rules);
-
-                Console.Write("Enter a word to transform: ");
-                var inputWord = Console.ReadLine();
-
-                Console.WriteLine(rule.ApplyTo(inputWord));
-                Console.WriteLine();
-            }
         }
 
-        private static RuleMachine SelectRule(List<(RuleNode rule, RuleMachine machine)> rules)
+        private static RuleMachine SelectRule(List<RuleMachine> rules)
         {
             for (var i = 0; i < rules.Count; i++)
             {
-                Console.WriteLine($"{i + 1}. {rules[i].rule.ToString()}");
+                Console.WriteLine($"{i + 1}. {rules[i].Rule.ToString()}");
             }
 
             while (true)
@@ -95,7 +154,7 @@ namespace SoundChange
 
                 if (int.TryParse(answer, out int ruleNum) && ruleNum >= 1 && ruleNum <= rules.Count)
                 {
-                    return rules[ruleNum - 1].machine;
+                    return rules[ruleNum - 1];
                 }
             }
         }

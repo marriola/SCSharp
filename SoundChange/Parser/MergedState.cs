@@ -27,6 +27,7 @@ namespace SoundChange.Parser
             }
 
             IsFinal = States.Any(x => x.IsFinal);
+            IsTarget = States.Any(x => x.IsTarget);
 
             var stateNames = States
                 .Select(x => x.Name)

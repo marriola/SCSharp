@@ -84,7 +84,10 @@
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
+    <None Include="test.sc" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Content Include="lexicon.txt" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -35,7 +35,7 @@ namespace SoundChange.Parser.Nodes
             Parent = null;
         }
 
-        private static readonly string EMPTY = StateMachines.Special.LAMBDA.ToString();
+        private static readonly string EMPTY = StateMachines.RuleMachine.Special.LAMBDA.ToString();
 
         public static BuilderNode TreeFrom(IEnumerable<string> keys, string head = "", bool isFinal = false, char? character = null, BuilderNode parent = null)
         {
@@ -65,7 +65,7 @@ namespace SoundChange.Parser.Nodes
                     follow = new List<string>();
                 }
 
-                var next = group.Key == StateMachines.Special.LAMBDA
+                var next = group.Key == StateMachines.RuleMachine.Special.LAMBDA
                     ? head
                     : head + group.Key;
 

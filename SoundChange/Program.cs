@@ -2,8 +2,10 @@
 using SoundChange.Parser;
 using SoundChange.Parser.Nodes;
 using SoundChange.StateMachines;
+using SoundChange.StateMachines.RuleMachine;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -29,7 +31,7 @@ namespace SoundChange
 
             if (args.Length == 0)
             {
-                Console.WriteLine("usage: SoundChange [rules] [lexicon]");
+                Console.WriteLine("usage: SoundChange --rules [path] --lexicon [path] --verbose");
                 return;
             }
 
@@ -39,14 +41,26 @@ namespace SoundChange
 
             using (var writer = new StreamWriter(LexiconFile + ".out"))
             {
+                var sw = new Stopwatch();
+                sw.Start();
+
                 foreach (var word in lexicon)
                 {
                     var nextWord = TransformWord(word, rules, out List<string> transformations);
-                    writer.WriteLine(nextWord);
 
                     if (Verbose)
+                    {
+                        writer.WriteLine($"{word} → {nextWord}");
                         transformations.ForEach(t => writer.WriteLine($"    {t}"));
+                    }
+                    else
+                    {
+                        writer.WriteLine(word);
+                    }
                 }
+
+                sw.Stop();
+                Console.WriteLine($"Transformed {lexicon.Count} words in {sw.ElapsedMilliseconds} ms");
             }
         }
 
@@ -92,6 +106,9 @@ namespace SoundChange
 
         private static List<RuleMachine> ParseRules(string path)
         {
+            var sw = new Stopwatch();
+            sw.Start();
+
             var parser = new Parser.Parser(new StreamReader(path));
             var nodes = new List<Node>();
 
@@ -119,25 +136,20 @@ namespace SoundChange
                 Console.WriteLine($"Syntax error {ex.Message}");
             }
 
-            var features = nodes
-                .Select(x => x as FeatureSetNode)
-                .Where(x => x != null)
+            var features = nodes.OfType<FeatureSetNode>().ToList();
+            var categories = nodes.OfType<CategoryNode>().ToList();
+            var ruleNodes = nodes.OfType<RuleNode>().ToList();
+
+            ruleNodes.ForEach(x => x.FitUtterancesToKeys(features, categories));
+
+            var rules = ruleNodes
+                .Select(rule => new RuleMachine(rule, features, categories))
                 .ToList();
 
-            var categories = nodes
-                .Select(x => x as CategoryNode)
-                .Where(x => x != null)
-                .ToList();
+            sw.Stop();
+            Console.WriteLine($"Parsed {rules.Count} rules in {sw.ElapsedMilliseconds} ms");
 
-            nodes
-                .Where(x => x is RuleNode)
-                .ToList()
-                .ForEach(r => (r as RuleNode).FitUtterancesToKeys(features, categories));
-
-            return nodes
-                .Where(x => x is RuleNode)
-                .Select(x => new RuleMachine(x as RuleNode, features, categories))
-                .ToList();
+            return rules;
         }
 
         private static RuleMachine SelectRule(List<RuleMachine> rules)

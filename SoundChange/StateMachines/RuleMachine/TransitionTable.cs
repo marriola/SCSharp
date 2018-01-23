@@ -1,46 +1,15 @@
 ﻿using SoundChange.Parser;
-using SoundChange.Parser.Nodes;
+using SoundChange.StateMachines.RuleMachine;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace SoundChange.StateMachines
 {
-    class Transformation
-    {
-        public string Value { get; private set; }
-
-        public Node From { get; private set; }
-
-        public Node To { get; private set; }
-
-        public string FromLiteral { get; set; }
-
-        public Transformation(string value, Node from, Node to)
-        {
-            Value = value;
-            From = from;
-            To = to;
-        }
-
-        public override string ToString()
-        {
-            return $"{FromLiteral} ({From.ToString()}) → {Value} ({To.ToString()})";
-        }
-    }
-
     class TransitionTable
     {
         public Dictionary<(State from, char on), StateCollection> Table { get; set; } = new Dictionary<(State from, char on), StateCollection>();
 
         public Dictionary<(State from, char on), Transformation> Transforms { get; set; } = new Dictionary<(State from, char on), Transformation>();
-
-        /// <summary>
-        /// Gets or sets the set of transitions for which emission of an output symbol should be suppressed.
-        /// </summary>
-        /// <remarks>
-        /// This set is used to suppress symbol emission so that multi-character segments can be treated as a single unit.
-        /// </remarks>
-        public HashSet<(State from, char on)> SuppressEmitTransitions { get; set; } = new HashSet<(State from, char on)>();
 
         public bool Contains((State from, char on) key)
         {
@@ -72,11 +41,6 @@ namespace SoundChange.StateMachines
             {
                 Add(from, c, state);
             }
-        }
-
-        public void SuppressSymbolEmission(State from, char on)
-        {
-            SuppressEmitTransitions.Add((from, on));
         }
 
         public IEnumerable<State> GetAll(State state, char c)

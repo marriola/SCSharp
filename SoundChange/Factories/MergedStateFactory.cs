@@ -1,5 +1,6 @@
 ﻿using SoundChange.Parser;
 using SoundChange.StateMachines;
+using SoundChange.StateMachines.RuleMachine;
 using System;
 using System.Collections.Generic;
 using System.Linq;

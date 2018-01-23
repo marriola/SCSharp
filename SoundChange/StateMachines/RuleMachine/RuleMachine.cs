@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace SoundChange.StateMachines
+namespace SoundChange.StateMachines.RuleMachine
 {
     using FeatureSetDictionary = Dictionary<string, FeatureSetNode>;
     using CategoryDictionary = Dictionary<string, CategoryNode>;
@@ -51,7 +51,7 @@ namespace SoundChange.StateMachines
                 }
             }
 
-            var placeholder = rule.Environment.Single(x => x is PlaceholderNode) as PlaceholderNode;
+            var placeholder = rule.Environment.OfType<PlaceholderNode>().Single();
             placeholder.Children = rule.Target;
 
             var dFeatures = features.ToDictionary(k => k.Name, v => v);
@@ -85,15 +85,6 @@ namespace SoundChange.StateMachines
                 //_transitions.Transforms.Remove(pair.Key);
                 _transitions.Transforms[(mergedState, pair.Key.on)] = pair.Value;
             }
-
-            var suppressTransitions = _transitions.SuppressEmitTransitions
-                .Where(x => x.from == state)
-                .ToList();
-
-            foreach (var t in suppressTransitions)
-            {
-                _transitions.SuppressSymbolEmission(mergedState, t.on);
-            }
         }
 
         private void BuildSetNodes(List<Node> nodes, FeatureSetDictionary features, CategoryDictionary categories)
@@ -124,7 +115,6 @@ namespace SoundChange.StateMachines
             var transformationsInProgress = new List<string>();
 
             word = Special.START + word + Special.END;
-            bool lastWasTarget = false;
 
             foreach (var c in word)
             {
@@ -139,23 +129,20 @@ namespace SoundChange.StateMachines
                         builder.Clear();
                     }
 
-                    builder.Append(transform.Value);
+                    builder.Append(transform.Result);
                     undoBuilder.Append(c);
                     transform.FromLiteral = undoBuilder.ToString();
 
                     isTransformationApplied = true;
-                    transformationsInProgress.Add(transform.ToString());
+                    if (!(transform is NullTransformation))
+                        transformationsInProgress.Add(transform.ToString());
                 }
-                else if (!Special.CONTROL_CHARS.Contains(c) &&
-                    ((!lastWasTarget || transition?.IsTarget != true) ||
-                    !_transitions.SuppressEmitTransitions.Contains(key)))
+                else if (!Special.CONTROL_CHARS.Contains(c))
                 {
                     builder.Append(c);
                     if (undoBuilder.Length > 0)
                         undoBuilder.Append(c);
                 }
-
-                lastWasTarget = current.IsTarget;
 
                 if (transition == null)
                 {
@@ -167,6 +154,7 @@ namespace SoundChange.StateMachines
                         builder.Clear();
                         undoBuilder.Clear();
                         transformationsInProgress.Clear();
+                        isTransformationApplied = false;
                     }
                 }
                 else
@@ -197,8 +185,6 @@ namespace SoundChange.StateMachines
         private void ConvertToDFA()
         {
             var dfa = new TransitionTable();
-            dfa.SuppressEmitTransitions = _transitions.SuppressEmitTransitions;
-
             var stack = new Stack<State>();
             stack.Push(START);
 
@@ -366,25 +352,26 @@ namespace SoundChange.StateMachines
         }
 
         State BuildNFAInternal(
-            Window<Node> nodes,
+            Window<Node> input,
             Window<Node> result,
             State startNode,
             FeatureSetDictionary features, 
-            CategoryDictionary categories)
+            CategoryDictionary categories,
+            Window<Node> outerNodes = null)
         {
             var current = startNode;
             bool inTargetSection;
 
-            for (; !nodes.IsOutOfBounds; nodes.MoveNext())
+            for (; !input.IsOutOfBounds; input.MoveNext())
             {
-                var node = nodes.Current;
+                var node = input.Current;
                 var resultNode = result?.Current;
                 inTargetSection = !result.IsOutOfBounds;
 
                 switch (node)
                 {
                     case BoundaryNode bNode:
-                        MatchCharacter(nodes.AtBeginning
+                        MatchCharacter(input.AtBeginning
                             ? Special.START
                             : Special.END,
                             node);
@@ -429,11 +416,11 @@ namespace SoundChange.StateMachines
                     case PlaceholderNode pNode:
                         // Advance the result window to the beginning.
                         result.MoveNext();
-                        current = BuildNFAInternal(pNode.Children.ToWindow(), result, current, features, categories);
+                        current = BuildNFAInternal(pNode.Children.ToWindow(), result, current, features, categories, input);
                         break;
                 }
 
-                if (startNode == START && nodes.AtEnd)
+                if ((outerNodes == null || outerNodes.AtEnd) && input.AtEnd)
                 {
                     current.IsFinal = true;
                 }
@@ -454,7 +441,7 @@ namespace SoundChange.StateMachines
                 var subtree = _stateFactory.Next(inTargetSection);
                 _transitions.Add(current, Special.LAMBDA, subtree);
 
-                var subtreeLast = BuildNFAInternal(oNode.Children.ToWindow(), result, subtree, features, categories);
+                var subtreeLast = BuildNFAInternal(oNode.Children.ToWindow(), result, subtree, features, categories, input);
                 _transitions.Add(subtreeLast, Special.LAMBDA, next);
 
                 var final = _stateFactory.Next(inTargetSection);
@@ -486,7 +473,7 @@ namespace SoundChange.StateMachines
                     {
                         var remainder = string.Join(string.Empty, uResult.Contents).Substring(uResult.Index + 1);
 
-                        if (nodes.HasNext)
+                        if (input.HasNext)
                         {
                             result.Insert(result.Index + 1, new UtteranceNode(remainder));
                         }
@@ -559,7 +546,9 @@ namespace SoundChange.StateMachines
                             var next = _stateFactory.Next(inTargetSection);
 
                             _transitions.Add(top.State, child.Character.Value, next);
-                            _transitions.SuppressSymbolEmission(top.State, child.Character.Value);
+
+                            if (inTargetSection)
+                                _transitions.Transforms[(top.State, child.Character.Value)] = new NullTransformation();
 
                             if (child.IsFinal)
                             {
@@ -600,7 +589,6 @@ namespace SoundChange.StateMachines
                                 // Apply transformation if one was found.
                                 _transitions.Transforms[(top.State, on)] = new Transformation(transformTo, targetNode, transformation);
                             }
-                            // TODO have input symbol "transform" into itself if no transformation found?
                         }
                     }
                 }

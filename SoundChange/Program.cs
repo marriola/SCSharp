@@ -112,9 +112,9 @@ namespace SoundChange
             var parser = new Parser.Parser(new StreamReader(path));
             var nodes = new List<Node>();
 
-            try
+            while (parser.HasNext)
             {
-                while (parser.HasNext)
+                try
                 {
                     var node = parser.Next();
                     if (node == null)
@@ -122,18 +122,18 @@ namespace SoundChange
 
                     nodes.Add(node);
                 }
-            }
-            catch (UnexpectedTokenException ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
-            catch (ParseException ex)
-            {
-                Console.WriteLine($"Parse error {ex.Message}");
-            }
-            catch (SyntaxException ex)
-            {
-                Console.WriteLine($"Syntax error {ex.Message}");
+                catch (UnexpectedTokenException ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+                catch (ParseException ex)
+                {
+                    Console.WriteLine($"Parse error {ex.Message}");
+                }
+                catch (SyntaxException ex)
+                {
+                    Console.WriteLine($"Syntax error {ex.Message}");
+                }
             }
 
             var features = nodes.OfType<FeatureSetNode>().ToList();

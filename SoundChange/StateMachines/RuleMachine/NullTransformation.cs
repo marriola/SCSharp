@@ -11,7 +11,7 @@
     class NullTransformation : Transformation
     {
         public NullTransformation()
-            : base("", null, null)
+            : base(string.Empty, null, null)
         {
         }
 

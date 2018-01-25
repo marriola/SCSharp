@@ -106,9 +106,9 @@ namespace SoundChange.StateMachines
         /// Moves the window forward.
         /// </summary>
         /// <returns>True if the window is still in bounds; otherwise, false.</returns>
-        public bool MoveNext()
+        public bool MoveNext(int offset = 1)
         {
-            ++_index;
+            _index += offset;
             return !IsOutOfBounds;
         }
 
@@ -116,10 +116,19 @@ namespace SoundChange.StateMachines
         /// Moves the window back.
         /// </summary>
         /// <returns>True if the window is still in bounds; otherwise, false.</returns>
-        public bool MoveBack()
+        public bool MoveBack(int offset = 1)
         {
-            --_index;
+            _index -= offset;
             return !IsOutOfBounds;
+        }
+
+        /// <summary>
+        /// Returns the item at the current position and moves the position forward.
+        /// </summary>
+        /// <returns></returns>
+        public T Read()
+        {
+            return _contents[_index++];
         }
 
         /// <summary>

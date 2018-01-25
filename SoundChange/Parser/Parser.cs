@@ -34,7 +34,9 @@ namespace SoundChange.Parser
                 Tokens.PLACEHOLDER,
                 Tokens.SLASH,
                 Tokens.PLUS,
-                Tokens.MINUS
+                Tokens.MINUS,
+                Tokens.UTTERANCE,
+                Tokens.IDENTIFIER
             };
 
             _lexer.Buffer();

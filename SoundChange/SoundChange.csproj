@@ -48,6 +48,7 @@
   <ItemGroup>
     <Compile Include="Factories\MergedStateFactory.cs" />
     <Compile Include="Lexer\Lexer.cs" />
+    <Compile Include="Lexer\RegexToken.cs" />
     <Compile Include="Lexer\UnexpectedTokenException.cs" />
     <Compile Include="Parser\MergedState.cs" />
     <Compile Include="Parser\Nodes\BoundaryNode.cs" />
@@ -84,10 +85,14 @@
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
-    <None Include="test.sc" />
+    <Content Include="test.sc">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="lexicon.txt" />
+    <Content Include="lexicon.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

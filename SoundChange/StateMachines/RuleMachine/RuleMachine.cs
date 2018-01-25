@@ -109,10 +109,10 @@ namespace SoundChange.StateMachines.RuleMachine
             var nextWord = string.Empty;
             var builder = new StringBuilder();
             var undoBuilder = new StringBuilder();
+            
             var isTransformationApplied = false;
-
-            transformationsApplied = new List<string>();
             var transformationsInProgress = new List<string>();
+            transformationsApplied = new List<string>();
 
             word = Special.START + word + Special.END;
 
@@ -146,7 +146,7 @@ namespace SoundChange.StateMachines.RuleMachine
 
                 if (transition == null)
                 {
-                    current = TransitionFromStart(c);
+                    current = START;
 
                     if (isTransformationApplied)
                     {
@@ -164,7 +164,7 @@ namespace SoundChange.StateMachines.RuleMachine
 
                 if (current.IsFinal)
                 {
-                    current = TransitionFromStart(c);
+                    current = START;
 
                     nextWord += builder.ToString();
                     builder.Clear();
@@ -175,11 +175,6 @@ namespace SoundChange.StateMachines.RuleMachine
             }
 
             return nextWord + builder.ToString();
-
-            State TransitionFromStart(char c)
-            {
-                return _transitions.GetFirst(START, c) ?? START;
-            }
         }
 
         private void ConvertToDFA()
@@ -357,16 +352,15 @@ namespace SoundChange.StateMachines.RuleMachine
             State startNode,
             FeatureSetDictionary features, 
             CategoryDictionary categories,
-            Window<Node> outerNodes = null)
+            Window<Node> outerNodes = null,
+            bool inTargetSection = false)
         {
             var current = startNode;
-            bool inTargetSection;
 
             for (; !input.IsOutOfBounds; input.MoveNext())
             {
                 var node = input.Current;
                 var resultNode = result?.Current;
-                inTargetSection = !result.IsOutOfBounds;
 
                 switch (node)
                 {
@@ -378,7 +372,7 @@ namespace SoundChange.StateMachines.RuleMachine
                         break;
 
                     case UtteranceNode uNode:
-                        TransformUtterance(uNode, node, resultNode);
+                        TransformUtterance(uNode, resultNode);
                         break;
 
                     case SetIdentifierNode fiNode:
@@ -416,7 +410,7 @@ namespace SoundChange.StateMachines.RuleMachine
                     case PlaceholderNode pNode:
                         // Advance the result window to the beginning.
                         result.MoveNext();
-                        current = BuildNFAInternal(pNode.Children.ToWindow(), result, current, features, categories, input);
+                        current = BuildNFAInternal(pNode.Children.ToWindow(), result, current, features, categories, input, inTargetSection: true);
                         break;
                 }
 
@@ -450,40 +444,67 @@ namespace SoundChange.StateMachines.RuleMachine
                 return final;
             }
 
-            void TransformUtterance(UtteranceNode uNode, Node targetNode, Node resultNode)
+            void TransformUtterance(UtteranceNode targetNode, Node resultNode)
             {
-                var uResult = CreateWindowOver(resultNode, uNode);
+                var uResult = CreateWindowOver(resultNode, targetNode);
+                var original = string.Empty;
                 var transformTo = string.Empty;
 
-                for (int k = 0; k < uNode.Value.Length; k++, uResult.MoveNext())
+                for (int k = 0; k < targetNode.Value.Length; k++, uResult?.MoveNext())
                 {
-                    if (uResult == null || uResult.IsOutOfBounds)
+                    Transformation transformation = null;
+
+                    if (uResult != null)
                     {
-                        result.MoveNext();
-                        resultNode = result.Current;
-                        uResult = CreateWindowOver(resultNode, uNode);
+                        if (uResult == null || uResult.IsOutOfBounds)
+                        {
+                            result.MoveNext();
+                            resultNode = result.Current;
+                            uResult = CreateWindowOver(resultNode, targetNode);
+                        }
+
+                        transformTo += uResult?.Current.ToString();
+
+                        // Apply a transformation if we're done matching the target utterance and there's more result
+                        // utterance left, insert a new UtteranceNode to contain the remainder.
+
+                        if (k == targetNode.Value.Length - 1)
+                        {
+                            if (uResult.HasNext)
+                            {
+                                var remainder = string.Join(string.Empty, uResult.Contents).Substring(uResult.Index + 1);
+
+                                if (input.HasNext)
+                                {
+                                    result.Insert(result.Index + 1, new UtteranceNode(remainder));
+                                }
+                                else
+                                {
+                                    transformTo += remainder;
+                                }
+                            }
+
+                            transformation = new Transformation(transformTo, targetNode, new UtteranceNode(transformTo));
+                            transformTo = string.Empty;
+                        }
+                    }
+                    else if (inTargetSection)
+                    {
+                        // Still in placeholder, but either have no result or have run out of result.
+                        transformation = new NullTransformation();
+                    }
+                    else
+                    {
+                        transformTo += targetNode.Value[k];
+
+                        if (k == targetNode.Value.Length - 1)
+                        {
+                            transformation = new Transformation(transformTo, targetNode, new UtteranceNode(transformTo));
+                            transformTo = string.Empty;
+                        }
                     }
 
-                    var c = uNode.Value[k];
-                    transformTo = uResult.Current.ToString();
-
-                    // Apply a transformation if we're done matching the target utterance and there's more result
-                    // utterance left, insert a new UtteranceNode to contain the remainder.
-                    if (k == uNode.Value.Length - 1 && uResult.HasNext)
-                    {
-                        var remainder = string.Join(string.Empty, uResult.Contents).Substring(uResult.Index + 1);
-
-                        if (input.HasNext)
-                        {
-                            result.Insert(result.Index + 1, new UtteranceNode(remainder));
-                        }
-                        else
-                        {
-                            transformTo += remainder;
-                        }
-                    }
-
-                    MatchCharacter(c, targetNode, transformTo);
+                    MatchCharacter(targetNode.Value[k], targetNode, transformation);
                 }
             }
 
@@ -491,7 +512,7 @@ namespace SoundChange.StateMachines.RuleMachine
             {
                 if (node == null)
                 {
-                    throw new ArgumentNullException(nameof(node));
+                    return null;
                 }
 
                 switch (node)
@@ -514,7 +535,7 @@ namespace SoundChange.StateMachines.RuleMachine
                 }
             }
 
-            void MatchCharacter(char c, Node targetNode, string transformation = null)
+            void MatchCharacter(char c, Node targetNode, Transformation transformation = null)
             {
                 var next = _stateFactory.Next(inTargetSection);
 
@@ -522,7 +543,7 @@ namespace SoundChange.StateMachines.RuleMachine
 
                 if (transformation != null)
                 {
-                    _transitions.Transforms[(current, c)] = new Transformation(transformation, targetNode, new UtteranceNode(transformation));
+                    _transitions.Transforms[(current, c)] = transformation;
                 }
 
                 current = next;

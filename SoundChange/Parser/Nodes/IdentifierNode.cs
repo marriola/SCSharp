@@ -6,6 +6,12 @@
 
         public IdentifierNode(string name)
         {
+            // Cut off trailing disambiguation dot
+            if (name.EndsWith("."))
+            {
+                name = name.Substring(0, name.Length - 1);
+            }
+
             Name = name;
         }
 

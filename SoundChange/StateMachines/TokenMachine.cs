@@ -2,6 +2,7 @@
 using SoundChange.Lexer;
 using SoundChange.Parser;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace SoundChange.StateMachines
 {
@@ -15,7 +16,17 @@ namespace SoundChange.StateMachines
 
         private Dictionary<(State, char), State> _transitions = new Dictionary<(State, char), State>();
 
+        private List<RegexToken> _regexTokens = new List<RegexToken>();
+
         private StateFactory _stateFactory = new StateFactory();
+
+        public IReadOnlyList<RegexToken> RegexTokens
+        {
+            get
+            {
+                return _regexTokens.AsReadOnly();
+            }
+        }
 
         public bool IsFinalState
         {
@@ -35,6 +46,12 @@ namespace SoundChange.StateMachines
 
         public void AddToken(Token token)
         {
+            if (token is RegexToken reToken)
+            {
+                _regexTokens.Add(reToken);
+                return;
+            }
+
             var currentState = START;
 
             for (var i = 0; i < token.Value.Length; i++)

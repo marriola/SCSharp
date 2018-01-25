@@ -2,21 +2,16 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace SoundChange.Lexer
 {
     class Lexer : IEnumerable<Token>
     {
-        private static Regex RE_UTTERANCE = new Regex("[a-zɐ-˩æøØθ]+");
+        private readonly Window<char> _contents;
 
-        private static Regex RE_IDENTIFIER = new Regex("\\$[a-zA-Z][a-zA-Z0-9-]*");
-
-        private static Regex RE_NUMERIC = new Regex("[0-9]+");
-
-        private readonly StreamReader _stream;
-
-        private TokenMachine _stateMachine;
+        private TokenMachine _tokenMachine;
 
         private List<Token> _tokens;
 
@@ -36,21 +31,21 @@ namespace SoundChange.Lexer
 
         private bool hasNext()
         {
-            return !_stream.EndOfStream;
+            return !_contents.IsOutOfBounds;
         }
 
         private bool IsNextWhitespace
         {
             get
             {
-                return _stream.EndOfStream || char.IsWhiteSpace((char)_stream.Peek());
+                return _contents.IsOutOfBounds || char.IsWhiteSpace(_contents.Current);
             }
         }
 
         public Lexer(StreamReader stream)
         {
-            _stream = stream;
-            _stateMachine = new TokenMachine();
+            _contents = stream.ReadToEnd().ToWindow();
+            _tokenMachine = new TokenMachine();
             _tokens = new List<Token>();
         }
 
@@ -102,9 +97,9 @@ namespace SoundChange.Lexer
         private Token next()
         {
             var value = string.Empty;
-            _stateMachine.Reset();
+            _tokenMachine.Reset();
 
-            while (char.IsWhiteSpace(peek()))
+            while (char.IsWhiteSpace(_contents.Current))
             {
                 value += read();
             }
@@ -118,10 +113,10 @@ namespace SoundChange.Lexer
 
             while (true)
             {
-                if (_stateMachine.Current == TokenMachine.ERROR)
+                if (_tokenMachine.Current == TokenMachine.ERROR)
                 {
                     // Detect end of token
-                    if (char.IsWhiteSpace(peek()) || _stateMachine.PeekStart(peekNonWhitespace()) != TokenMachine.ERROR)
+                    if (char.IsWhiteSpace(_contents.Current) || _tokenMachine.PeekStart(peekNonWhitespace()) != TokenMachine.ERROR)
                     {
                         break;
                     }
@@ -132,10 +127,10 @@ namespace SoundChange.Lexer
                 }
 
                 var c = read();
-                _stateMachine.Step(c);
+                _tokenMachine.Step(c);
                 value += c;
 
-                var next = _stateMachine.Peek(Token.END);
+                var next = _tokenMachine.Peek(Token.END);
 
                 // Detect end of token
                 if (next?.Token.Value.Length == 1 || IsNextWhitespace) // || IsNextSingleCharacterToken())
@@ -144,30 +139,38 @@ namespace SoundChange.Lexer
                 }
             }
 
-            if (_stateMachine.Current == TokenMachine.ERROR)
+            if (_tokenMachine.Current == TokenMachine.ERROR)
             {
-                if (RE_IDENTIFIER.IsMatch(value))
+                // TODO be less lazy
+                foreach (var reToken in _tokenMachine.RegexTokens)
                 {
-                    return new Token(TokenType.IDENT, value, position);
-                }
-                else if (RE_UTTERANCE.IsMatch(value))
-                {
-                    return new Token(TokenType.UTTERANCE, value, position);
+                    var match = reToken.Regex.Match(value);
+
+                    if (match.Success)
+                    {
+                        var token = new Token(reToken.Type, value.Substring(0, match.Length), position);
+                        if (match.Length < value.Length)
+                        {
+                            _contents.MoveBack(value.Length - match.Length);
+                        }
+
+                        return token;
+                    }
                 }
 
                 return TokenMachine.ERROR.Token.At(position);
             }
 
-            _stateMachine.Step(Token.END);
+            _tokenMachine.Step(Token.END);
 
-            return _stateMachine.Current.Token.At(position);
+            return _tokenMachine.Current.Token.At(position);
         }
 
         private void FlushWhitespace()
         {
             while (IsNextWhitespace)
             {
-                if (_stream.EndOfStream)
+                if (_contents.IsOutOfBounds)
                 {
                     return;
                 }
@@ -175,11 +178,6 @@ namespace SoundChange.Lexer
                 read();
             }
         }
-
-        //private bool IsNextSingleCharacterToken()
-        //{
-        //    return _stateMachine.Peek((char)_stream.Peek()).Token.Value.Length == 1;
-        //}
 
         public IEnumerator<Token> GetEnumerator()
         {
@@ -193,17 +191,12 @@ namespace SoundChange.Lexer
 
         public void Add(Token token)
         {
-            _stateMachine.AddToken(token);
-        }
-
-        private char peek()
-        {
-            return (char)_stream.Peek();
+            _tokenMachine.AddToken(token);
         }
 
         private char read()
         {
-            var c = (char)_stream.Read();
+            var c = _contents.Read();
 
             if (c == '\n')
             {
@@ -219,12 +212,12 @@ namespace SoundChange.Lexer
 
         private char peekNonWhitespace()
         {
-            while (char.IsWhiteSpace(peek()))
+            while (char.IsWhiteSpace(_contents.Current))
             {
                 read();
             }
 
-            return peek();
+            return _contents.Current;
         }
 
         public Token Peek()

@@ -2,6 +2,7 @@
 
 namespace SoundChange.Lexer
 {
+
     class Token
     {
         public static char END = (char)0;

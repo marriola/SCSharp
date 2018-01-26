@@ -143,6 +143,10 @@ namespace SoundChange.StateMachines.RuleMachine
                 var transition = _transitions.GetFirst(current, c);
                 var key = (current, c);
 
+                // If the current state is a final state, flush the builder to nextWord and
+                // go to START, but only if we are:
+                //   * not about to transition to another final state, and
+                //   * not about to transition on a diacritic or modifier.
                 if (current.IsFinal && !DIACRITICS_AND_MODIFIERS.Contains(c) && transition?.IsFinal != true)
                 {
                     current = START;
@@ -154,6 +158,7 @@ namespace SoundChange.StateMachines.RuleMachine
                     isTransformationApplied = false;
                 }
 
+                // If there is a transformation available, add the result to builder and save the input symbol to undoBuilder.
                 var hasTransform = _transitions.Transforms.TryGetValue(key, out Transformation transform);
                 var hasDefaultTransform = _transitions.DefaultTransforms.TryGetValue(key.current, out Transformation defaultTransform);
 
@@ -174,6 +179,10 @@ namespace SoundChange.StateMachines.RuleMachine
                         transformationsInProgress.Add(t.ToString());
                 }
 
+                // Add the character to the builder if no transformation was applied, or if a default
+                // transformation was applied (in which case we want to keep the input symbol, since
+                // it isn't part of the transformation).
+                // If the latter is not the case, also add the input symbol to the undoBuilder.
                 if ((!hasTransform || hasDefaultTransform) && !Special.CONTROL_CHARS.Contains(c))
                 {
                     builder.Append(c);
@@ -181,6 +190,10 @@ namespace SoundChange.StateMachines.RuleMachine
                         undoBuilder.Append(c);
                 }
 
+                // If no transition was possible, return to START. If a transformation was partially
+                // applied:
+                //   * undo it if it was a normal transformation, or
+                //   * commit it if it was a default transformation.
                 if (transition == null)
                 {
                     current = START;

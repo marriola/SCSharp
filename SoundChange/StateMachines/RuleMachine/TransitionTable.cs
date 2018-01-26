@@ -11,6 +11,15 @@ namespace SoundChange.StateMachines
 
         public Dictionary<(State from, char on), Transformation> Transforms { get; set; } = new Dictionary<(State from, char on), Transformation>();
 
+        /// <summary>
+        /// Gets or sets the dictionary of transformations taken when no other transformation applies for a given state.
+        /// </summary>
+        /// <remarks>
+        /// The purpose of these transformations is to produce output when transforming a segment that is a subset of a larger segment. Such a
+        /// segment would otherwise be omitted instead of transformed.
+        /// </remarks>
+        public Dictionary<State, Transformation> DefaultTransforms { get; set; } = new Dictionary<State, Transformation>();
+
         public bool Contains((State from, char on) key)
         {
             return Table.ContainsKey(key);

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace SoundChange.StateMachines.RuleMachine
 {
@@ -30,11 +31,23 @@ namespace SoundChange.StateMachines.RuleMachine
 
         public RuleNode Rule { get; private set; }
 
+        private static readonly HashSet<char> DIACRITICS_AND_MODIFIERS;
+
         private TransitionTable _transitions = new TransitionTable();
 
         private StateFactory _stateFactory;
 
         private MergedStateFactory _mergedStateFactory;
+
+        static RuleMachine()
+        {
+            DIACRITICS_AND_MODIFIERS = new HashSet<char>();
+
+            for (var c = '\u02b0'; c <= '\u0341'; c++)
+            {
+                DIACRITICS_AND_MODIFIERS.Add(c);
+            }
+        }
 
         public RuleMachine(RuleNode rule, List<FeatureSetNode> features, List<CategoryNode> categories)
         {
@@ -85,6 +98,15 @@ namespace SoundChange.StateMachines.RuleMachine
                 //_transitions.Transforms.Remove(pair.Key);
                 _transitions.Transforms[(mergedState, pair.Key.on)] = pair.Value;
             }
+
+            var defaultTransforms = _transitions.DefaultTransforms
+                .Where(pair => pair.Key == state)
+                .ToList();
+
+            foreach (var pair in defaultTransforms)
+            {
+                _transitions.DefaultTransforms[mergedState] = pair.Value;
+            }
         }
 
         private void BuildSetNodes(List<Node> nodes, FeatureSetDictionary features, CategoryDictionary categories)
@@ -121,7 +143,21 @@ namespace SoundChange.StateMachines.RuleMachine
                 var transition = _transitions.GetFirst(current, c);
                 var key = (current, c);
 
-                if (_transitions.Transforms.TryGetValue(key, out Transformation transform))
+                if (current.IsFinal && !DIACRITICS_AND_MODIFIERS.Contains(c) && transition?.IsFinal != true)
+                {
+                    current = START;
+
+                    nextWord += builder.ToString();
+                    builder.Clear();
+                    transformationsApplied.AddRange(transformationsInProgress);
+                    transformationsInProgress.Clear();
+                    isTransformationApplied = false;
+                }
+
+                var hasTransform = _transitions.Transforms.TryGetValue(key, out Transformation transform);
+                var hasDefaultTransform = _transitions.DefaultTransforms.TryGetValue(key.current, out Transformation defaultTransform);
+
+                if ((transform ?? defaultTransform) is Transformation t)
                 {
                     if (builder.Length > 0)
                     {
@@ -129,18 +165,19 @@ namespace SoundChange.StateMachines.RuleMachine
                         builder.Clear();
                     }
 
-                    builder.Append(transform.Result);
+                    builder.Append(t.Result);
                     undoBuilder.Append(c);
-                    transform.FromLiteral = undoBuilder.ToString();
+                    t.FromLiteral = undoBuilder.ToString();
 
                     isTransformationApplied = true;
-                    if (!(transform is NullTransformation))
-                        transformationsInProgress.Add(transform.ToString());
+                    if (!(t is NullTransformation))
+                        transformationsInProgress.Add(t.ToString());
                 }
-                else if (!Special.CONTROL_CHARS.Contains(c))
+
+                if ((!hasTransform || hasDefaultTransform) && !Special.CONTROL_CHARS.Contains(c))
                 {
                     builder.Append(c);
-                    if (undoBuilder.Length > 0)
+                    if (!hasDefaultTransform && undoBuilder.Length > 0)
                         undoBuilder.Append(c);
                 }
 
@@ -150,7 +187,14 @@ namespace SoundChange.StateMachines.RuleMachine
 
                     if (isTransformationApplied)
                     {
-                        nextWord += undoBuilder.ToString();
+                        if (hasDefaultTransform)
+                        {
+                            nextWord += builder.ToString();
+                        }
+                        else
+                        {
+                            nextWord += undoBuilder.ToString();
+                        }
                         builder.Clear();
                         undoBuilder.Clear();
                         transformationsInProgress.Clear();
@@ -161,17 +205,6 @@ namespace SoundChange.StateMachines.RuleMachine
                 {
                     current = transition;
                 }
-
-                if (current.IsFinal)
-                {
-                    current = START;
-
-                    nextWord += builder.ToString();
-                    builder.Clear();
-                    transformationsApplied.AddRange(transformationsInProgress);
-                    transformationsInProgress.Clear();
-                    isTransformationApplied = false;
-                }
             }
 
             return nextWord + builder.ToString();
@@ -180,6 +213,8 @@ namespace SoundChange.StateMachines.RuleMachine
         private void ConvertToDFA()
         {
             var dfa = new TransitionTable();
+            dfa.DefaultTransforms = _transitions.DefaultTransforms;
+
             var stack = new Stack<State>();
             stack.Push(START);
 
@@ -608,7 +643,14 @@ namespace SoundChange.StateMachines.RuleMachine
                             if (transformTo != null)
                             {
                                 // Apply transformation if one was found.
-                                _transitions.Transforms[(top.State, on)] = new Transformation(transformTo, targetNode, transformation);
+                                if (child.Character.Value == Special.LAMBDA)
+                                {
+                                    _transitions.DefaultTransforms[top.State] = new Transformation(transformTo, targetNode, transformation);
+                                }
+                                else
+                                {
+                                    _transitions.Transforms[(top.State, on)] = new Transformation(transformTo, targetNode, transformation);
+                                }
                             }
                         }
                     }

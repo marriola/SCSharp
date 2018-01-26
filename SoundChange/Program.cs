@@ -55,7 +55,7 @@ namespace SoundChange
                     }
                     else
                     {
-                        writer.WriteLine(word);
+                        writer.WriteLine(nextWord);
                     }
                 }
 

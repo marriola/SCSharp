@@ -2,7 +2,6 @@
 using SoundChange.Lexer;
 using SoundChange.Parser;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 
 namespace SoundChange.StateMachines
 {

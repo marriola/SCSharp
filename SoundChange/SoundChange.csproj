@@ -54,6 +54,7 @@
     <Compile Include="Parser\Nodes\BoundaryNode.cs" />
     <Compile Include="Parser\Nodes\BuilderNode.cs" />
     <Compile Include="Parser\Nodes\CategoryNode.cs" />
+    <Compile Include="Parser\Nodes\CommentNode.cs" />
     <Compile Include="Parser\Nodes\FeatureSetNode.cs" />
     <Compile Include="Parser\Nodes\SetIdentifierNode.cs" />
     <Compile Include="Parser\Nodes\IdentifierNode.cs" />

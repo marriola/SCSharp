@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 namespace SoundChange.Lexer
 {
@@ -113,27 +112,43 @@ namespace SoundChange.Lexer
 
             while (true)
             {
-                if (_tokenMachine.Current == TokenMachine.ERROR)
+                // Detect end of token
+                if (_tokenMachine.Current == TokenMachine.ERROR &&
+                    (char.IsWhiteSpace(_contents.Current) ||
+                        _tokenMachine.PeekStart(peekNonWhitespace()) != TokenMachine.ERROR))
                 {
-                    // Detect end of token
-                    if (char.IsWhiteSpace(_contents.Current) || _tokenMachine.PeekStart(peekNonWhitespace()) != TokenMachine.ERROR)
-                    {
-                        break;
-                    }
-
-                    // Might still be an identifier or utterance
-                    value += read();
-                    continue;
+                    break;
                 }
 
                 var c = read();
                 _tokenMachine.Step(c);
                 value += c;
 
+                if (_tokenMachine.Current == TokenMachine.ERROR)
+                {
+                    // Check to see if we can match on one of the regex tokens before failing.
+                    // TODO be less lazy and write a proper state machine
+                    var contents = new string(_contents.Contents.Skip(_contents.Index - 1).ToArray());
+
+                    foreach (var reToken in _tokenMachine.RegexTokens)
+                    {
+                        var match = reToken.Match(contents);
+
+                        if (match.Success)
+                        {
+                            var token = new Token(reToken.Type, match.Value, position);
+                            _contents.MoveNext(match.Length - 1);
+                            UpdateFilePosition(match.Value);
+
+                            return token;
+                        }
+                    }
+                }
+
                 var next = _tokenMachine.Peek(Token.END);
 
                 // Detect end of token
-                if (next?.Token.Value.Length == 1 || IsNextWhitespace) // || IsNextSingleCharacterToken())
+                if (next?.Token.Value.Length == 1 || IsNextWhitespace)
                 {
                     break;
                 }
@@ -141,29 +156,36 @@ namespace SoundChange.Lexer
 
             if (_tokenMachine.Current == TokenMachine.ERROR)
             {
-                // TODO be less lazy
-                foreach (var reToken in _tokenMachine.RegexTokens)
-                {
-                    var match = reToken.Regex.Match(value);
-
-                    if (match.Success)
-                    {
-                        var token = new Token(reToken.Type, value.Substring(0, match.Length), position);
-                        if (match.Length < value.Length)
-                        {
-                            _contents.MoveBack(value.Length - match.Length);
-                        }
-
-                        return token;
-                    }
-                }
-
                 return TokenMachine.ERROR.Token.At(position);
             }
 
             _tokenMachine.Step(Token.END);
 
             return _tokenMachine.Current.Token.At(position);
+        }
+
+        private void UpdateFilePosition(string match)
+        {
+            int numLines = 0;
+            int numColumns = 0;
+
+            foreach (var c in match)
+            {
+                if (c == '\n')
+                {
+                    numColumns = 1;
+                    ++numLines;
+                }
+                else
+                {
+                    ++numColumns;
+                }
+            }
+
+            _filePosition.line += numLines;
+            _filePosition.column = numLines == 0
+                ? _filePosition.column + numColumns
+                : numColumns;
         }
 
         private void FlushWhitespace()

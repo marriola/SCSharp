@@ -15,7 +15,8 @@
         public static readonly Token PLUS = new Token(TokenType.PLUS, "+");
         public static readonly Token MINUS = new Token(TokenType.MINUS, "-");
         public static readonly Token REQUIRE = new Token(TokenType.REQUIRE, "!");
-        public static readonly Token UTTERANCE = new RegexToken(TokenType.UTTERANCE, "^[a-zɐ-́æœŒøØθ]+");
-        public static readonly Token IDENTIFIER = new RegexToken(TokenType.IDENT, "^\\$[a-zA-Z][a-zA-Z0-9-]*\\.?");
+        public static readonly RegexToken COMMENT = new RegexToken(TokenType.COMMENT, "^;(?<text>.+)\r?\n");
+        public static readonly RegexToken UTTERANCE = new RegexToken(TokenType.UTTERANCE, "^[a-zɐ-́æœŒøØθ]+");
+        public static readonly RegexToken IDENTIFIER = new RegexToken(TokenType.IDENT, "^\\$[a-zA-Z]([a-zA-Z0-9-]*[a-zA-Z0-9])?\\.?");
     }
 }

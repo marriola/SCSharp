@@ -11,5 +11,10 @@ namespace SoundChange.Lexer
         {
             Regex = new Regex(value);
         }
+
+        public Match Match(string input)
+        {
+            return Regex.Match(input);
+        }
     }
 }

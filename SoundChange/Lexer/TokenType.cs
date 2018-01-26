@@ -18,6 +18,7 @@
         MINUS,
         REQUIRE,
         IDENT,
-        UTTERANCE
+        UTTERANCE,
+        COMMENT
     }
 }

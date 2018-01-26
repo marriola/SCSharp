@@ -36,7 +36,8 @@ namespace SoundChange.Parser
                 Tokens.PLUS,
                 Tokens.MINUS,
                 Tokens.UTTERANCE,
-                Tokens.IDENTIFIER
+                Tokens.IDENTIFIER,
+                Tokens.COMMENT
             };
 
             _lexer.Buffer();
@@ -60,6 +61,13 @@ namespace SoundChange.Parser
             else if (_lexer.Current?.Type == TokenType.LBRACK)
             {
                 return FeatureSet_Rule();
+            }
+            else if (_lexer.Current?.Type == TokenType.COMMENT)
+            {
+                var comment = _lexer.Current.Value.Substring(1).Trim();
+                _lexer.Next();
+
+                return new CommentNode(comment);
             }
             else if (_lexer.Current != null)
             {

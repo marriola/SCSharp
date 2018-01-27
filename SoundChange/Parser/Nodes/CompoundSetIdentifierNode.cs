@@ -52,20 +52,17 @@ namespace SoundChange.Parser.Nodes
 
                         if (Members.Count == 0)
                         {
-                            Members = new HashSet<string>(child.IsPresent
-                            ? featureSet.Members.ToList()
-                            : featureSet.Removals.Keys.ToList());
+                            Members = new HashSet<string>(
+                                child.IsPresent
+                                    ? featureSet.Members.ToList()
+                                    : featureSet.Removals.Keys.ToList());
                         }
                         else
                         {
-                            if (child.IsPresent)
-                            {
-                                Members = new HashSet<string>(Members.Intersect(featureSet.Removals.Keys));
-                            }
-                            else
-                            {
-                                Members = new HashSet<string>(Members.Except(featureSet.Members));
-                            }
+                            Members = new HashSet<string>(
+                                child.IsPresent
+                                    ? Members.Intersect(featureSet.Removals.Keys)
+                                    : Members.Except(featureSet.Members));
                         }
 
                         break;

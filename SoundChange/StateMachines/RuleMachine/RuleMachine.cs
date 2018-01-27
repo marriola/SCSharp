@@ -140,10 +140,22 @@ namespace SoundChange.StateMachines.RuleMachine
 
             foreach (var c in word)
             {
+                var last = current;
+                (State current, char c) key;
                 var transition = _transitions.GetFirst(current, c);
-                var key = (current, c);
 
-                // If the current state is a final state, flush the builder to nextWord and
+                // Try transitioning from START if no transition found for current state and symbol.
+                if (transition == null)
+                {
+                    transition = _transitions.GetFirst(START, c);
+                    key = (START, c);
+                }
+                else
+                {
+                    key = (current, c);
+                }
+
+                // If the origin state is a final state, flush the builder to nextWord and
                 // go to START, but only if we are:
                 //   * not about to transition to another final state, and
                 //   * not about to transition on a diacritic or modifier.
@@ -153,6 +165,7 @@ namespace SoundChange.StateMachines.RuleMachine
 
                     nextWord += builder.ToString();
                     builder.Clear();
+                    undoBuilder.Clear();
                     transformationsApplied.AddRange(transformationsInProgress);
                     transformationsInProgress.Clear();
                     isTransformationApplied = false;
@@ -160,7 +173,7 @@ namespace SoundChange.StateMachines.RuleMachine
 
                 // If there is a transformation available, add the result to builder and save the input symbol to undoBuilder.
                 var hasTransform = _transitions.Transforms.TryGetValue(key, out Transformation transform);
-                var hasDefaultTransform = _transitions.DefaultTransforms.TryGetValue(key.current, out Transformation defaultTransform);
+                var hasDefaultTransform = _transitions.DefaultTransforms.TryGetValue(last, out Transformation defaultTransform);
 
                 if ((transform ?? defaultTransform) is Transformation t)
                 {
@@ -630,9 +643,6 @@ namespace SoundChange.StateMachines.RuleMachine
                         {
                             // Leaf node - add transformation to transition table.
                             string transformTo = null;
-                            var on = child.Character.Value == Special.LAMBDA
-                                ? child.Parent.Character.Value
-                                : child.Character.Value;
 
                             if (transformation is UtteranceNode uNode)
                             {
@@ -650,7 +660,7 @@ namespace SoundChange.StateMachines.RuleMachine
 
                             if (child.Character.Value != Special.LAMBDA)
                             {
-                                _transitions.Add(top.State, on, final);
+                                _transitions.Add(top.State, child.Character.Value, final);
                             }
 
                             if (transformTo != null)
@@ -662,7 +672,7 @@ namespace SoundChange.StateMachines.RuleMachine
                                 }
                                 else
                                 {
-                                    _transitions.Transforms[(top.State, on)] = new Transformation(transformTo, targetNode, transformation);
+                                    _transitions.Transforms[(top.State, child.Character.Value)] = new Transformation(transformTo, targetNode, transformation);
                                 }
                             }
                         }

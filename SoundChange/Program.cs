@@ -1,14 +1,12 @@
 ﻿using SoundChange.Lexer;
 using SoundChange.Parser;
 using SoundChange.Parser.Nodes;
-using SoundChange.StateMachines;
 using SoundChange.StateMachines.RuleMachine;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
 using Utility.CommandLine;
 
 namespace SoundChange
@@ -21,46 +19,90 @@ namespace SoundChange
         [Argument('l', "lexicon")]
         private static string LexiconFile { get; set; }
 
+        [Argument('o', "output")]
+        private static string OutputFile { get; set; }
+
         [Argument('v', "verbose")]
         private static bool Verbose { get; set; }
 
         static void Main(string[] args)
         {
-            Console.InputEncoding = Encoding.UTF8;
-            Console.OutputEncoding = Encoding.UTF8;
-
             if (args.Length == 0)
             {
-                Console.WriteLine("usage: SoundChange --rules [path] --lexicon [path] --verbose");
+                Console.WriteLine(@"usage: SoundChange [--verbose] --rules PATH --lexicon PATH [--output PATH]
+
+Options:
+    -v, --verbose       Outputs initial word and transformations applied to each word
+    -r, --rules PATH    Specifies the path to the rules file
+    -l, --lexicon PATH  Specifies the path to the lexicon file
+    -o, --output PATH   Specifies the path to the output file");
                 return;
             }
 
-            Arguments.Populate();
-            var rules = ParseRules(RulesFile);
-            var lexicon = ReadLexicon(LexiconFile);
-
-            using (var writer = new StreamWriter(LexiconFile + ".out"))
+            if (LexiconFile == null)
             {
-                var sw = new Stopwatch();
-                sw.Start();
+                Console.WriteLine("Error: Lexicon file not specified.");
+                return;
+            }
+            else if (RulesFile == null)
+            {
+                Console.WriteLine("Error: Rules file not specified.");
+                return;
+            }
 
-                foreach (var word in lexicon)
+            List<string> lexicon;
+            List<RuleMachine> rules;
+
+            try
+            {
+                Arguments.Populate();
+                lexicon = ReadLexicon(LexiconFile);
+                rules = ParseRules(RulesFile);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                return;
+            }
+
+            try
+            {
+                var outputFile = OutputFile ?? Path.ChangeExtension(LexiconFile, ".out" + Path.GetExtension(LexiconFile));
+
+                using (var writer = new StreamWriter(outputFile))
                 {
-                    var nextWord = TransformWord(word, rules, out List<string> transformations);
+                    var sw = new Stopwatch();
+                    sw.Start();
 
-                    if (Verbose)
+                    foreach (var word in lexicon)
                     {
-                        writer.WriteLine($"{word} → {nextWord}");
-                        transformations.ForEach(t => writer.WriteLine($"    {t}"));
+                        try
+                        {
+                            var nextWord = TransformWord(word, rules, out List<string> transformations);
+
+                            if (Verbose)
+                            {
+                                writer.WriteLine($"{word} → {nextWord}");
+                                transformations.ForEach(t => writer.WriteLine($"    {t}"));
+                            }
+                            else
+                            {
+                                writer.WriteLine(nextWord);
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine($"Unexpected error transforming '{word}': {e.Message}");
+                        }
                     }
-                    else
-                    {
-                        writer.WriteLine(nextWord);
-                    }
+
+                    sw.Stop();
+                    Console.WriteLine($"Transformed {lexicon.Count} words in {sw.ElapsedMilliseconds} ms");
                 }
-
-                sw.Stop();
-                Console.WriteLine($"Transformed {lexicon.Count} words in {sw.ElapsedMilliseconds} ms");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
             }
         }
 
@@ -150,25 +192,6 @@ namespace SoundChange
             Console.WriteLine($"Parsed {rules.Count} rules in {sw.ElapsedMilliseconds} ms");
 
             return rules;
-        }
-
-        private static RuleMachine SelectRule(List<RuleMachine> rules)
-        {
-            for (var i = 0; i < rules.Count; i++)
-            {
-                Console.WriteLine($"{i + 1}. {rules[i].Rule.ToString()}");
-            }
-
-            while (true)
-            {
-                Console.Write("\nSelect a rule: ");
-                var answer = Console.ReadLine();
-
-                if (int.TryParse(answer, out int ruleNum) && ruleNum >= 1 && ruleNum <= rules.Count)
-                {
-                    return rules[ruleNum - 1];
-                }
-            }
         }
     }
 }

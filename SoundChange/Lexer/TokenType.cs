@@ -16,7 +16,7 @@
         ARROW,
         PLUS,
         MINUS,
-        REQUIRE,
+        PIPE,
         IDENT,
         UTTERANCE,
         COMMENT

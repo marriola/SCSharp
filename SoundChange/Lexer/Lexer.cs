@@ -99,10 +99,16 @@ namespace SoundChange.Lexer
                 {
                     ++incremented;
                     ++_it;
+
+                    if (_it >= _tokens.Count)
+                        return (-1, null);
                 }
 
                 lastIt = _it;
                 ++_it;
+
+                if (_it >= _tokens.Count)
+                    return (-1, null);
             }
 
             return (incremented + count, _tokens[lastIt]);

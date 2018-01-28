@@ -35,6 +35,7 @@ namespace SoundChange.Parser
                 Tokens.SLASH,
                 Tokens.PLUS,
                 Tokens.MINUS,
+                Tokens.PIPE,
                 Tokens.UTTERANCE,
                 Tokens.IDENTIFIER,
                 Tokens.COMMENT
@@ -279,6 +280,7 @@ namespace SoundChange.Parser
         private RuleNode RuleEnvironment(List<Node> target, List<Node> result, List<Node> environment)
         {
             OptionalNode optional = null;
+            DisjunctNode disjunct = null;
             List<Node> parent = environment;
 
             while (true)
@@ -320,17 +322,48 @@ namespace SoundChange.Parser
                         {
                             throw new ParseException(nameof(RuleEnvironment), "utterance, identifier, placeholder, category identifier, feature identifier, or ')'", next);
                         }
-                        optional = new OptionalNode();
-                        parent = optional.Children;
-                        environment.Add(optional);
+
+                        var node = Optional_DisjunctNode();
+
+                        if (node is OptionalNode oNode)
+                        {
+                            optional = oNode;
+                            parent = oNode.Children;
+                        }
+                        else if (node is DisjunctNode dNode)
+                        {
+                            dNode.AddChild();
+                            disjunct = dNode;
+                            parent = dNode.Children[0];
+                        }
+
+                        environment.Add(node);
+                        break;
+
+                    case TokenType.PIPE:
+                        if (disjunct == null)
+                        {
+                            throw new ParseException(nameof(RuleEnvironment), "utterance, identifier, placeholder, category identifier, feature identifier, or ')'", next);
+                        }
+
+                        disjunct.AddChild();
+                        parent = disjunct.Children.Last();
                         break;
 
                     case TokenType.RPAREN:
-                        if (optional == null)
+                        if (optional != null)
+                        {
+                            optional = null;
+                        }
+                        else if (disjunct != null)
+                        {
+                            disjunct = null;
+                        }
+                        else
                         {
                             throw new ParseException(nameof(RuleEnvironment), "utterance, identifier, placeholder, category identifier, feature identifier, or '('", next);
                         }
-                        optional = null;
+
                         parent = environment;
                         break;
 
@@ -340,6 +373,40 @@ namespace SoundChange.Parser
                         return new RuleNode(target, result, environment);
                 }
             }
+        }
+
+        private Node Optional_DisjunctNode()
+        {
+            var incrementedTotal = 0;
+            var hasPipe = false;
+
+            while (true)
+            {
+                var (incrementedSymbol, token) = _lexer.NextCountWhitespace();
+
+                if (incrementedTotal == -1)
+                {
+                    throw new ParseException(nameof(Optional_DisjunctNode), "')', RuleEnvironment", Tokens.EOF);
+                }
+
+                incrementedTotal += incrementedSymbol;
+
+                if (token.Type == TokenType.RPAREN)
+                {
+                    break;
+                }
+                else if (token.Type == TokenType.PIPE)
+                {
+                    hasPipe = true;
+                    break;
+                }
+            }
+
+            _lexer.Back(incrementedTotal);
+
+            return hasPipe
+                ? new DisjunctNode() as Node
+                : new OptionalNode() as Node;
         }
 
         private Node CompoundSet_FeatureSetIdentifier()

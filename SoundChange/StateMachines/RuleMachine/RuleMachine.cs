@@ -279,8 +279,9 @@ namespace SoundChange.StateMachines.RuleMachine
                 {
                     // Follow each lambda transition to the first non-lambda transition, and add each to possibleTransitions.
                     var travelStack = new Stack<State>();
+                    var (_, travelSet) = Travel(possibleTransitions[Special.LAMBDA]);
 
-                    foreach (var state in Travel(possibleTransitions[Special.LAMBDA]))
+                    foreach (var state in travelSet)
                     {
                         travelStack.Push(state);
                     }
@@ -352,17 +353,28 @@ namespace SoundChange.StateMachines.RuleMachine
                         continue;
                     
                     // Compute travel set of states that have transitions on lambda.
-                    var travelSet = Travel(new List<State> { transition.to });
+                    var (finalStates, travelSet) = Travel(new List<State> { transition.to });
 
-                    // Add back in any non-lambda transitions we can take from the origin state.
-                    foreach (var t in follow.Where(x => x.Key.on != Special.LAMBDA))
+                    if (travelSet.Count == 0)
                     {
-                        travelSet.Add(t.Key.from);
+                        // Lambda transitions take us to one or more final states.
+                        // TODO do we always have to add transition.to?
+                        finalStates.Add(transition.to);
+                        groupedTransitions.Remove(transition);
+                        groupedTransitions.Add((transition.from, transition.on, _mergedStateFactory.Merge(finalStates)));
                     }
+                    else
+                    {
+                        // Add back in any non-lambda transitions we can take from the origin state.
+                        foreach (var t in follow.Where(x => x.Key.on != Special.LAMBDA))
+                        {
+                            travelSet.Add(t.Key.from);
+                        }
 
-                    // Merge the travel set into a new state and retarget the original transition to it.
-                    groupedTransitions.Remove(transition);
-                    groupedTransitions.Add((transition.from, transition.on, _mergedStateFactory.Merge(travelSet)));
+                        // Merge the travel set into a new state and retarget the original transition to it.
+                        groupedTransitions.Remove(transition);
+                        groupedTransitions.Add((transition.from, transition.on, _mergedStateFactory.Merge(travelSet)));
+                    }
                 }
 
                 // Add states to the DFA
@@ -379,8 +391,9 @@ namespace SoundChange.StateMachines.RuleMachine
             dfa.Transforms = _transitions.Transforms;
             _transitions = dfa;
 
-            HashSet<State> Travel(IEnumerable<State> states)
+            (HashSet<State> final, HashSet<State> travelSet) Travel(IEnumerable<State> states)
             {
+                var final = new HashSet<State>();
                 var result = new HashSet<State>(states);
                 var travelStack = new Stack<State>();
 
@@ -393,6 +406,10 @@ namespace SoundChange.StateMachines.RuleMachine
                 while (travelStack.Count > 0)
                 {
                     var top = travelStack.Pop();
+                    if (top.IsFinal)
+                    {
+                        final.Add(top);
+                    }
 
                     foreach (var pair in _transitions.From(top))
                     {
@@ -412,7 +429,7 @@ namespace SoundChange.StateMachines.RuleMachine
                     }
                 }
 
-                return result;
+                return (final, result);
             }
         }
 
@@ -485,6 +502,10 @@ namespace SoundChange.StateMachines.RuleMachine
                         current = MatchOptional(oNode);
                         break;
 
+                    case DisjunctNode dNode:
+                        current = MatchDisjunct(dNode);
+                        break;
+
                     case PlaceholderNode pNode:
                         // Advance the result window to the beginning.
                         result.MoveNext();
@@ -515,6 +536,34 @@ namespace SoundChange.StateMachines.RuleMachine
 
                 var subtreeLast = BuildNFAInternal(oNode.Children.ToWindow(), result, subtree, features, categories, input);
                 _transitions.Add(subtreeLast, Special.LAMBDA, next);
+
+                var final = _stateFactory.Next(inTargetSection);
+                _transitions.Add(next, Special.LAMBDA, final);
+
+                return final;
+            }
+
+            State MatchDisjunct(DisjunctNode dNode)
+            {
+                var next = _stateFactory.Next(inTargetSection);
+                _transitions.Add(current, Special.LAMBDA, next);
+
+                var last = current;
+                var oldResultIndex = result.Index;
+
+                foreach (var child in dNode.Children)
+                {
+                    if (child.Count == 0)
+                        continue;
+
+                    result.MoveBack(result.Index - oldResultIndex);
+
+                    var subtree = _stateFactory.Next(inTargetSection);
+                    _transitions.Add(last, Special.LAMBDA, subtree);
+
+                    var subtreeLast = BuildNFAInternal(child.ToWindow(), result, subtree, features, categories, input);
+                    _transitions.Add(subtreeLast, Special.LAMBDA, next);
+                }
 
                 var final = _stateFactory.Next(inTargetSection);
                 _transitions.Add(next, Special.LAMBDA, final);

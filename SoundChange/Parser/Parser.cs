@@ -83,12 +83,17 @@ namespace SoundChange.Parser
             Match(TokenType.LBRACE, nameof(Category));
 
             var members = new HashSet<string>();
+            var includes = new List<string>();
 
             while (true)
             {
                 var next = _lexer.Next(true);
 
-                if (next.Type == TokenType.UTTERANCE)
+                if (next.Type == TokenType.IDENT)
+                {
+                    includes.Add(next.Value);
+                }
+                else if (next.Type == TokenType.UTTERANCE)
                 {
                     members.Add(next.Value);
                 }
@@ -102,7 +107,7 @@ namespace SoundChange.Parser
                 }
             }
 
-            return new CategoryNode(ident.Value, members);
+            return new CategoryNode(ident.Value, members, includes);
         }
 
         /// <summary>
@@ -116,7 +121,7 @@ namespace SoundChange.Parser
             Match(TokenType.LBRACK, nameof(FeatureSet_Rule));
             var next = _lexer.Next(true);
 
-            if (next.Type == TokenType.IDENT && _lexer.Peek().Type == TokenType.RBRACK)
+            if (next.Type == TokenType.IDENT && _lexer.Peek().Type == TokenType.RBRACK && _lexer.Peek(2).Type != TokenType.SLASH)
             {
                 Match(TokenType.RBRACK, nameof(FeatureSet_Rule));
                 return FeatureSet(next.Value);
@@ -201,11 +206,6 @@ namespace SoundChange.Parser
 
             var envPosition = _lexer.Current.Position;
             var node = RuleEnvironment(target, result, environment);
-
-            if (node.Target.Count == 0)
-            {
-                throw new SyntaxException(nameof(Rule), "Target segment may not be empty.", targetPosition);
-            }
 
             for (var i = 1; i < environment.Count - 1; i++)
             {

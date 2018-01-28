@@ -39,6 +39,8 @@ Options:
                 return;
             }
 
+            Arguments.Populate();
+
             if (LexiconFile == null)
             {
                 Console.WriteLine("Error: Lexicon file not specified.");
@@ -55,7 +57,6 @@ Options:
 
             try
             {
-                Arguments.Populate();
                 lexicon = ReadLexicon(LexiconFile);
                 rules = ParseRules(RulesFile);
             }
@@ -114,7 +115,7 @@ Options:
             foreach (var rule in rules)
             {
                 var oldWord = result;
-                result = rule.ApplyTo(result, out List<string> ruleTransformations);
+                result = rule.ApplyTo(result, out List<Transformation> ruleTransformations);
 
                 if (ruleTransformations.Any())
                 {
@@ -123,6 +124,7 @@ Options:
                 }
 
                 transformations.AddRange(ruleTransformations
+                    //.Where(t => !(t is NullTransformation))
                     .Select(t => $"        {t}"));
             }
 
@@ -180,9 +182,10 @@ Options:
 
             var features = nodes.OfType<FeatureSetNode>().ToList();
             var categories = nodes.OfType<CategoryNode>().ToList();
-            var ruleNodes = nodes.OfType<RuleNode>().ToList();
+            categories.ForEach(c => c.ResolveIncludes(features, categories));
 
-            ruleNodes.ForEach(x => x.FitUtterancesToKeys(features, categories));
+            var ruleNodes = nodes.OfType<RuleNode>().ToList();
+            //ruleNodes.ForEach(x => x.FitUtterancesToKeys(features, categories));
 
             var rules = ruleNodes
                 .Select(rule => new RuleMachine(rule, features, categories))

@@ -81,11 +81,31 @@ namespace SoundChange.Lexer
             {
                 while (_tokens[_it].Type == TokenType.WHITESPACE)
                 {
-                    _it++;
+                    ++_it;
                 }
             }
 
             return _tokens[_it++];
+        }
+
+        public (int count, Token token) NextCountWhitespace(int count = 1)
+        {
+            var incremented = 0;
+            var lastIt = _it;
+
+            for (var i = 0; i < count; i++)
+            {
+                while (_tokens[_it].Type == TokenType.WHITESPACE)
+                {
+                    ++incremented;
+                    ++_it;
+                }
+
+                lastIt = _it;
+                ++_it;
+            }
+
+            return (incremented + count, _tokens[lastIt]);
         }
 
         public void Back(int count = 1)
@@ -242,10 +262,10 @@ namespace SoundChange.Lexer
             return _contents.Current;
         }
 
-        public Token Peek()
+        public Token Peek(int count = 1)
         {
-            var token = Next(true);
-            Back();
+            var (numIncremented, token) = NextCountWhitespace(count);
+            Back(numIncremented);
             return token;
         }
     }

@@ -125,7 +125,7 @@ namespace SoundChange.StateMachines.RuleMachine
         /// </summary>
         /// <param name="word"></param>
         /// <returns></returns>
-        public string ApplyTo(string word, out List<string> transformationsApplied)
+        public string ApplyTo(string word, out List<Transformation> transformationsApplied)
         {
             var current = START;
             var nextWord = string.Empty;
@@ -133,27 +133,23 @@ namespace SoundChange.StateMachines.RuleMachine
             var undoBuilder = new StringBuilder();
             
             var isTransformationApplied = false;
-            var transformationsInProgress = new List<string>();
-            transformationsApplied = new List<string>();
+            var transformationsInProgress = new List<Transformation>();
+            transformationsApplied = new List<Transformation>();
 
             word = Special.START + word + Special.END;
+            var lastc = '\0';
 
             foreach (var c in word)
             {
                 var last = current;
-                (State current, char c) key;
-                var transition = _transitions.GetFirst(current, c);
+                var transitionFromCurrent = _transitions.GetFirst(current, c);
 
                 // Try transitioning from START if no transition found for current state and symbol.
-                if (transition == null)
-                {
-                    transition = _transitions.GetFirst(START, c);
-                    key = (START, c);
-                }
-                else
-                {
-                    key = (current, c);
-                }
+                var transition = transitionFromCurrent ?? _transitions.GetFirst(START, c);
+                var key = transitionFromCurrent == null
+                    ? (START, c)
+                    : (current, c);
+
 
                 // If the origin state is a final state, flush the builder to nextWord and
                 // go to START, but only if we are:
@@ -166,6 +162,14 @@ namespace SoundChange.StateMachines.RuleMachine
                     nextWord += builder.ToString();
                     builder.Clear();
                     undoBuilder.Clear();
+
+                    // If all transformation are null transformation, consolidate them into one.
+                    // Otherwise, remove all null transformation.
+                    if (!transformationsInProgress.All(x => x is NullTransformation))
+                    {
+                        transformationsInProgress = transformationsInProgress.Where(x => !(x is NullTransformation)).ToList();
+                    }
+
                     transformationsApplied.AddRange(transformationsInProgress);
                     transformationsInProgress.Clear();
                     isTransformationApplied = false;
@@ -188,8 +192,7 @@ namespace SoundChange.StateMachines.RuleMachine
                     t.FromLiteral = undoBuilder.ToString();
 
                     isTransformationApplied = true;
-                    if (!(t is NullTransformation))
-                        transformationsInProgress.Add(t.ToString());
+                    transformationsInProgress.Add(t);
                 }
 
                 // Add the character to the builder if no transformation was applied, or if a default
@@ -203,17 +206,25 @@ namespace SoundChange.StateMachines.RuleMachine
                         undoBuilder.Append(c);
                 }
 
+                //if (transitionFromCurrent == null && hasDefaultTransform)
+                //{
+                //    transformationsApplied.Last().FromLiteral = lastc.ToString();
+                //    nextWord += builder.ToString();
+                //    builder.Clear();
+                //    undoBuilder.Clear();
+                //    transformationsInProgress.Clear();
+                //    isTransformationApplied = false;
+                //}
+
                 // If no transition was possible, return to START. If a transformation was partially
                 // applied:
                 //   * undo it if it was a normal transformation, or
                 //   * commit it if it was a default transformation.
-                if (transition == null)
+                if (transitionFromCurrent == null) // (transition == null)
                 {
-                    current = START;
-
                     if (isTransformationApplied)
                     {
-                        if (hasDefaultTransform)
+                        if (hasDefaultTransform || undoBuilder.Length == 0)
                         {
                             nextWord += builder.ToString();
                         }
@@ -226,11 +237,19 @@ namespace SoundChange.StateMachines.RuleMachine
                         transformationsInProgress.Clear();
                         isTransformationApplied = false;
                     }
+
+                    if (transition == null)
+                    {
+                        current = START;
+                    }
                 }
-                else
+
+                if (transition != null) // else
                 {
                     current = transition;
                 }
+
+                lastc = c;
             }
 
             return nextWord + builder.ToString();
@@ -437,18 +456,16 @@ namespace SoundChange.StateMachines.RuleMachine
                         break;
 
                     case SetIdentifierNode fiNode:
-                        if (!features.ContainsKey(fiNode.Name))
-                        {
-                            throw new KeyNotFoundException($"Feature set '{fiNode.Name}' not defined.");
-                        }
+                        var tree =
+                            features.TryGetValue(fiNode.Name, out FeatureSetNode featureSet)
+                                ? fiNode.IsPresent
+                                    ? featureSet.PlusTree
+                                    : featureSet.MinusTree
+                                : categories.TryGetValue(fiNode.Name, out CategoryNode category)
+                                    ? category.BuilderTree
+                                    : throw new KeyNotFoundException($"Feature set '{fiNode.Name}' not defined.");
 
-                        var feature = features[fiNode.Name];
-
-                        current = TransformSet(fiNode.IsPresent
-                            ? feature.PlusTree
-                            : feature.MinusTree,
-                            node,
-                            resultNode);
+                        current = TransformSet(tree, node, resultNode);
                         break;
 
                     case CompoundSetIdentifierNode csiNode:
@@ -531,7 +548,7 @@ namespace SoundChange.StateMachines.RuleMachine
 
                         if (k == targetNode.Value.Length - 1)
                         {
-                            if (uResult.HasNext)
+                            if (uResult?.HasNext == true)
                             {
                                 var remainder = string.Join(string.Empty, uResult.Contents).Substring(uResult.Index + 1);
 
@@ -552,7 +569,7 @@ namespace SoundChange.StateMachines.RuleMachine
                     else if (inTargetSection)
                     {
                         // Still in placeholder, but either have no result or have run out of result.
-                        transformation = new NullTransformation();
+                        transformation = new NullTransformation(targetNode);
                     }
                     else
                     {
@@ -630,7 +647,7 @@ namespace SoundChange.StateMachines.RuleMachine
                             _transitions.Add(top.State, child.Character.Value, next);
 
                             if (inTargetSection)
-                                _transitions.Transforms[(top.State, child.Character.Value)] = new NullTransformation();
+                                _transitions.Transforms[(top.State, child.Character.Value)] = new NullTransformation(targetNode);
 
                             if (child.IsFinal)
                             {

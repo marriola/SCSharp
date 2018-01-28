@@ -31,6 +31,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <LangVersion>7.2</LangVersion>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -85,11 +86,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <Content Include="samples\grimm.sc">
+    <Content Include="samples\protogermanic.sc">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <None Include="packages.config" />
-    <Content Include="samples\grimm.txt">
+    <Content Include="samples\protogermanic.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="samples\test.sc">

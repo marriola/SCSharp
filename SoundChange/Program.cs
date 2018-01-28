@@ -62,7 +62,7 @@ Options:
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.Message);
+                LogException(e);
                 return;
             }
 
@@ -103,8 +103,16 @@ Options:
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.Message);
+                LogException(e);
             }
+        }
+
+        private static void LogException(Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+#if DEBUG
+            Console.WriteLine(ex.StackTrace);
+#endif
         }
 
         private static string TransformWord(string inputWord, List<RuleMachine> rules, out List<string> transformations)

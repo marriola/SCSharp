@@ -1,17 +1,17 @@
-﻿[$STOP-$voiced]/[+$fricative]/$V_
-
+﻿
 ; TODO implement OR nodes
 ;   $SONORANT/u$SONORANT/$V_(#|$C)
 ; TODO implement NOT nodes
 ;   $SONORANT/u$SONORANT/$V_!$V
 ;   $SONORANT/u$SONORANT/!$V_$V
 
+; Pre-PGmc
+
 m/um/$C_#
 m/um/#_$C
 m/um/$C_$C
 
-n/m/_$LABIAL
-m/n/_$DENTAL
+; n/m/_$LABIAL
 
 ; TODO implement transformation of Ø, i.e. insertion
 ; /u/#_$SONORANT$C
@@ -29,10 +29,11 @@ gʲʰ/gʷʰ/_w
 e/eː/_ʔ
 e/aː/_χ
 e/oː/_χʷ
-χ/a/$C_$C
-χʷ/o/$C_$C
+[$LARYNGEAL]/ə/$C_$C
 
 χʷ/g/$SONORANT_w
+
+; Early PGmc
 
 j//_[$V-$high]#
 w//_[$V-$high]#
@@ -42,11 +43,47 @@ w//_[$V-$high]#
 [$STOP+$voiced]/[-$voiced]/#_
 [$STOP+$aspirated]/[-$aspirated]/#_
 
-[$STOP+$voiced]/[-$voiced]/$V_
-[$STOP+$aspirated]/[-$aspirated]/$V_
+[$STOP-$voiced]/[+$fricative]/$VGLIDE_
+[$STOP+$voiced]/[-$voiced]/$VGLIDE_
+[$STOP+$aspirated]/[-$aspirated]/$VGLIDE_
 
+[+$fricative+$voiced]/[-$voiced]/[$V-$stressed]_
+[-$stressed]/[+$stressed]/#($C)($C)_
+
+gʷ/b/#_
+
+o/a/_
+a/ɑ/_
+
+; Late PGmc
+
+m/n/_#
+
+ɑ/ɑ̃/_$NASAL#
+[$NASAL]//_#    ; Why doesn't this one work?
+
+m/n/_$DENTAL
+
+ˈə/ˈɑ/$C_$C
+ə//$C_$C
+
+g/w/$VGLIDE_$VGLIDE
 
 $V { a e i o u }
+
+[$stressed] {
+    ɑ => ˈɑ
+    e => ˈe
+    i => ˈi
+    o => ˈo
+    u => ˈu
+    ə => ˈə
+}
+
+$VGLIDE {
+    $V w j
+    ə ɑ
+}
 
 $C {
     s
@@ -60,7 +97,9 @@ $DENTAL { t d dʰ }
 
 $LABIAL { m p b bʰ }
 
-$SONORANT { m n l r }
+$SONORANT { m n l r w j }
+
+$NASAL { m n }
 
 $LARYNGEAL { ʔ χ χʷ }
 
@@ -77,14 +116,18 @@ $STOP {
 [$voiced] {
     k => g
     gʰ
+    x => ɣ
     kʲ => gʲ
     gʲʰ
     kʷ => gʷ
     gʷʰ
     p => b
     bʰ
+    f => β
     t => d
+    s => z
     dʰ
+    d => ð
 }
 
 [$palatalized] {
@@ -106,4 +149,7 @@ $STOP {
     kʷ => xʷ
     p => ɸ
     t => θ
+    ɣ
+    β
+    ð
 }

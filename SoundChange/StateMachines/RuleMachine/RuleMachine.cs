@@ -565,6 +565,10 @@ namespace SoundChange.StateMachines.RuleMachine
                             transformation = new Transformation(transformTo, targetNode, new UtteranceNode(transformTo));
                             transformTo = string.Empty;
                         }
+                        else //if (uResult?.AtEnd == true)
+                        {
+                            transformation = new NullTransformation(targetNode);
+                        }
                     }
                     else if (inTargetSection)
                     {

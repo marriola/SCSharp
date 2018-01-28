@@ -176,7 +176,7 @@ namespace SoundChange.Lexer
 
             if (_tokenMachine.Current == TokenMachine.ERROR)
             {
-                return TokenMachine.ERROR.Token.At(position);
+                return new Token(TokenType.ERROR, value, position);
             }
 
             _tokenMachine.Step(Token.END);

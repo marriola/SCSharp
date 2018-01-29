@@ -1,5 +1,5 @@
-﻿$VSHORT { a e i o u }
-$VLONG { aː eː iː oː uː }
+﻿$VSHORT { ə ɑ a e i o u }
+$VLONG { ɑː aː eː iː oː uː }
 $V { $VSHORT $VLONG }
 
 [$stressed] {
@@ -29,19 +29,23 @@ $C {
 }
 
 $DENTAL { t d dʰ }
-
 $LABIAL { m p b bʰ }
-
 $SONORANT { m n l r w j }
-
 $NASAL { m n }
-
 $LARYNGEAL { ʔ χ χʷ }
 
 $STOP {
     k kʲ kʷ p t
     g gʲ gʷ b d
     gʰ gʲʰ gʷʰ bʰ dʰ
+}
+
+[$mid] {
+    e o
+}
+
+[$round] {
+    o u
 }
 
 [$high] {
@@ -88,9 +92,8 @@ $STOP {
     b => β
     d => ð
 }
+[+$stressed]/[-$stressed]/_
 
-; TODO implement OR nodes
-;   $SONORANT/u$SONORANT/$V_(#|$C)
 ; TODO implement NOT nodes
 ;   $SONORANT/u$SONORANT/$V_!$V
 ;   $SONORANT/u$SONORANT/!$V_$V
@@ -98,9 +101,9 @@ $STOP {
 ; Pre-PGmc
 
 m/um/(#|$C)_(#|$C)
-;m/um/$C_#
-;m/um/#_$C
-;m/um/$C_$C
+n/un/(#|$C)_(#|$C)
+l/ul/(#|$C)_(#|$C)
+r/ur/(#|$C)_(#|$C)
 
 ; n/m/_$LABIAL
 
@@ -117,9 +120,9 @@ gʲʰ/gʷʰ/_w
 ʔ//_$V
 χe/a/_
 χʷe/o/_
-e/eː/_ʔ
-e/aː/_χ
-e/oː/_χʷ
+eʔ/eː/_
+eχ/ɑː/_
+eχʷ/oː/_
 
 [$LARYNGEAL]/ə/$C_$C
 
@@ -133,23 +136,22 @@ w//_[$V-$high]#
 
 ; Grimm's law
 
-[$STOP-$voiced]/[+$fricative]/#_
-[$STOP+$voiced]/[-$voiced]/#_
-[$STOP+$aspirated]/[-$aspirated]/#_
+[$STOP-$voiced]/[+$fricative]/(#|$VGLIDE)_
+[$STOP+$voiced]/[-$voiced]/(#|$VGLIDE)_
+[$STOP+$aspirated]/[-$aspirated]/(#|$VGLIDE)_
 
-[$STOP-$voiced]/[+$fricative]/$VGLIDE_
-[$STOP+$voiced]/[-$voiced]/$VGLIDE_
-[$STOP+$aspirated]/[-$aspirated]/$VGLIDE_
+;[$STOP-$voiced]/[+$fricative]/$VGLIDE_
+;[$STOP+$voiced]/[-$voiced]/$VGLIDE_
+;[$STOP+$aspirated]/[-$aspirated]/$VGLIDE_
 
 ; Verner's law
 
-[+$fricative]/[+$voiced]/#[-$stressed]_
-[+$fricative]/[+$voiced]/$C[-$stressed]_
+[+$fricative]/[+$voiced]/(#|$C)[-$stressed]_
+;[+$fricative]/[+$voiced]/$C[-$stressed]_
 
-;[+$fricative+$voiced]/[-$voiced]/[$V-$stressed]_
+;;;;[+$fricative+$voiced]/[-$voiced]/[$V-$stressed]_
 
 ; Stress moves to initial syllable
-[+$stressed]//_
 [-$stressed]/[+$stressed]/#($C)($C)_
 
 gʷ/b/#_
@@ -157,7 +159,7 @@ gʷ/b/#_
 o/a/_
 a/ɑ/_
 
-; Late PGmc0\21/*9
+; Late PGmc
 m/n/_#
 
 ɑ/ɑ̃/_$NASAL#
@@ -169,3 +171,7 @@ m/n/_$DENTAL
 ə//$C_$C
 
 g/w/$VGLIDE_$VGLIDE
+
+e/i/!ˈ_
+ji/i/_
+ii/iː/_

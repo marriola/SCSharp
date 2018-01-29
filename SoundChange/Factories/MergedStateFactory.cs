@@ -29,6 +29,18 @@ namespace SoundChange.Factories
                     return states.First();
             }
 
+            var mergedStateStates = states
+                .OfType<MergedState>()
+                .SelectMany(x => x.States)
+                .ToList();
+
+            states = states
+                .Where(x => !(x is MergedState))
+                .Concat(mergedStateStates)
+                .OrderBy(x => x.Name)
+                .Distinct()
+                .ToList();
+
             states = states.OrderBy(x => x.Name).ToList();
             var merged = _merged.SingleOrDefault(x => x.States.OrderBy(y => y.Name).SequenceEqual(states));
 

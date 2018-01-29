@@ -17,6 +17,7 @@
         PLUS,
         MINUS,
         PIPE,
+        NOT,
         IDENT,
         UTTERANCE,
         COMMENT

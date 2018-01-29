@@ -131,6 +131,11 @@ namespace SoundChange.StateMachines
             return _contents[_index++];
         }
 
+        public T Peek()
+        {
+            return _contents[_index + 1];
+        }
+
         /// <summary>
         /// Inserts an item in the contents.
         /// </summary>

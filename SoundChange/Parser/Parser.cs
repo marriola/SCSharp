@@ -36,6 +36,7 @@ namespace SoundChange.Parser
                 Tokens.PLUS,
                 Tokens.MINUS,
                 Tokens.PIPE,
+                Tokens.NOT,
                 Tokens.UTTERANCE,
                 Tokens.IDENTIFIER,
                 Tokens.COMMENT
@@ -332,9 +333,9 @@ namespace SoundChange.Parser
                         }
                         else if (node is DisjunctNode dNode)
                         {
-                            dNode.AddChild();
+                            dNode.AddBranch();
                             disjunct = dNode;
-                            parent = dNode.Children[0];
+                            parent = dNode.Branches[0];
                         }
 
                         environment.Add(node);
@@ -346,8 +347,8 @@ namespace SoundChange.Parser
                             throw new ParseException(nameof(RuleEnvironment), "utterance, identifier, placeholder, category identifier, feature identifier, or ')'", next);
                         }
 
-                        disjunct.AddChild();
-                        parent = disjunct.Children.Last();
+                        disjunct.AddBranch();
+                        parent = disjunct.Branches.Last();
                         break;
 
                     case TokenType.RPAREN:

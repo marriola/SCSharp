@@ -5,21 +5,21 @@ namespace SoundChange.Parser.Nodes
 {
     class DisjunctNode : Node
     {
-        public List<List<Node>> Children { get; private set; } = new List<List<Node>>();
+        public List<List<Node>> Branches { get; private set; } = new List<List<Node>>();
 
         public void AddNode(Node node)
         {
-            Children.LastOrDefault().Add(node);
+            Branches.LastOrDefault().Add(node);
         }
 
-        public void AddChild()
+        public void AddBranch()
         {
-            Children.Add(new List<Node>());
+            Branches.Add(new List<Node>());
         }
 
         public override string ToString()
         {
-            var lists = Children
+            var lists = Branches
                 .Select(c => string.Join(string.Empty, c.Select(x => x.ToString())));
 
             return string.Format("({0})", string.Join("|", lists));

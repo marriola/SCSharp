@@ -5,12 +5,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 
 namespace SoundChange.StateMachines.RuleMachine
 {
-    using FeatureSetDictionary = Dictionary<string, FeatureSetNode>;
     using CategoryDictionary = Dictionary<string, CategoryNode>;
+    using FeatureSetDictionary = Dictionary<string, FeatureSetNode>;
 
     delegate void MergedStateHandler(State mergingState, MergedState mergedState);
 
@@ -29,6 +28,8 @@ namespace SoundChange.StateMachines.RuleMachine
     {
         public static State START = new State("S");
 
+        public static State ERROR = new State("ERROR");
+
         public RuleNode Rule { get; private set; }
 
         private static readonly HashSet<char> DIACRITICS_AND_MODIFIERS;
@@ -45,6 +46,9 @@ namespace SoundChange.StateMachines.RuleMachine
 
             for (var c = '\u02b0'; c <= '\u0341'; c++)
             {
+                if (c == '\u02cc' || c == '\u02c8')
+                    continue;
+
                 DIACRITICS_AND_MODIFIERS.Add(c);
             }
         }
@@ -150,7 +154,6 @@ namespace SoundChange.StateMachines.RuleMachine
                     ? (START, c)
                     : (current, c);
 
-
                 // If the origin state is a final state, flush the builder to nextWord and
                 // go to START, but only if we are:
                 //   * not about to transition to another final state, and
@@ -244,7 +247,11 @@ namespace SoundChange.StateMachines.RuleMachine
                     }
                 }
 
-                if (transition != null) // else
+                if (transition == ERROR)
+                {
+                    current = START;
+                }
+                else if (transition != null) // else
                 {
                     current = transition;
                 }
@@ -359,9 +366,10 @@ namespace SoundChange.StateMachines.RuleMachine
                     {
                         // Lambda transitions take us to one or more final states.
                         // TODO do we always have to add transition.to?
+                        var s = _mergedStateFactory.Merge(finalStates);
                         finalStates.Add(transition.to);
                         groupedTransitions.Remove(transition);
-                        groupedTransitions.Add((transition.from, transition.on, _mergedStateFactory.Merge(finalStates)));
+                        groupedTransitions.Add((transition.from, transition.on, s));
                     }
                     else
                     {
@@ -372,8 +380,9 @@ namespace SoundChange.StateMachines.RuleMachine
                         }
 
                         // Merge the travel set into a new state and retarget the original transition to it.
+                        var s = _mergedStateFactory.Merge(travelSet);
                         groupedTransitions.Remove(transition);
-                        groupedTransitions.Add((transition.from, transition.on, _mergedStateFactory.Merge(travelSet)));
+                        groupedTransitions.Add((transition.from, transition.on, s));
                     }
                 }
 
@@ -381,7 +390,8 @@ namespace SoundChange.StateMachines.RuleMachine
                 foreach (var transition in groupedTransitions)
                 {
                     dfa.Add(transition.from, transition.on, transition.to);
-                    if (!stack.Contains(transition.to))
+
+                    if (transition.to != top && !stack.Contains(transition.to))
                     {
                         stack.Push(transition.to);
                     }
@@ -551,7 +561,7 @@ namespace SoundChange.StateMachines.RuleMachine
                 var last = current;
                 var oldResultIndex = result.Index;
 
-                foreach (var child in dNode.Children)
+                foreach (var child in dNode.Branches)
                 {
                     if (child.Count == 0)
                         continue;
@@ -565,10 +575,99 @@ namespace SoundChange.StateMachines.RuleMachine
                     _transitions.Add(subtreeLast, Special.LAMBDA, next);
                 }
 
+                // don't allow match on what follows disjunct node unless one of the branches begins with that symbol
+                if (!input.AtEnd)
+                {
+                    var follow = First(input.Peek());
+                    var failSymbols = follow
+                        .Where(x =>
+                            !dNode.Branches.Any(y =>
+                                First(y[0]).Contains(x)));
+
+                    foreach (var failSymbol in failSymbols)
+                    {
+                        _transitions.Add(last, failSymbol, ERROR);
+                    }
+                }
+
                 var final = _stateFactory.Next(inTargetSection);
                 _transitions.Add(next, Special.LAMBDA, final);
 
                 return final;
+            }
+
+            HashSet<char> First(Node node)
+            {
+                var set = new HashSet<char>();
+
+                switch (node)
+                {
+                    case BoundaryNode bNode:
+                        set.Add(Special.END);
+                        break;
+
+                    case UtteranceNode uNode:
+                        set.Add(uNode.Value[0]);
+                        break;
+
+                    case PlaceholderNode pNode:
+                        return First(pNode.Children[0]);
+
+                    case SetIdentifierNode siNode:
+                        // TODO use CompoundSetIdentifierNodes instead of SetIdentifierNodes
+                        features.TryGetValue(siNode.Name, out FeatureSetNode feature);
+
+                        if (feature == null)
+                        {
+                            throw new KeyNotFoundException($"Category '{siNode.Name}' not defined.");
+                        }
+
+                        var members = siNode.IsPresent
+                            ? feature.Members.ToList()
+                            : feature.Additions.Keys.ToList();
+
+                        foreach (var member in members)
+                        {
+                            set.Add(member[0]);
+                        }
+                        break;
+
+                    case IdentifierNode iNode:
+                        categories.TryGetValue(iNode.Name, out CategoryNode category);
+
+                        if (category == null)
+                        {
+                            throw new KeyNotFoundException($"Category '{iNode.Name}' not defined.");
+                        }
+
+                        foreach (var member in category.Members)
+                        {
+                            set.Add(member[0]);
+                        }
+                        break;
+
+                    case CompoundSetIdentifierNode csiNode:
+                        foreach (var member in csiNode.Members)
+                        {
+                            set.Add(member[0]);
+                        }
+                        break;
+
+                    case OptionalNode oNode:
+                        return First(oNode.Children[0]);
+
+                    case DisjunctNode dNode:
+                        foreach (var branch in dNode.Branches)
+                        {
+                            foreach (var first in First(branch[0]))
+                            {
+                                set.Add(first);
+                            }
+                        }
+                        break;
+                }
+
+                return set;
             }
 
             void TransformUtterance(UtteranceNode targetNode, Node resultNode)
